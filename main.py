@@ -1,0 +1,1482 @@
+import random
+import sys
+import os
+import time
+
+from engine.core    import (Creature, save_game, load_game, list_save_slots, random_wild)
+from data.creatures import (CREATURES, ITEMS, TOWNS, WILD_AREAS,
+                             ELITE_FOUR, REQUIRED_BADGES, RANDOM_TRAINERS,
+                             FISH_OLD_ROD, FISH_GOOD_ROD, GROTTOS,
+                             SEASONAL_WILDS, SEASONAL_BERRY)
+from engine.battle  import run_battle, HELD_ITEMS
+from engine.rival   import (RivalState, trigger_rival_if_due,
+                             trigger_post_elite_rival, COUNTER_STARTER)
+from ui.display     import (C, clear, slow_print, banner, section,
+                             hp_bar, creature_card, team_summary,
+                             menu, confirm, pause, press_enter,
+                             show_world_map)
+
+SEASONS = ["Spring", "Summer", "Autumn", "Winter"]
+SEASON_COLORS = {"Spring": C.GREEN, "Summer": C.YELLOW, "Autumn": C.RED, "Winter": C.CYAN}
+SEASON_ICONS  = {"Spring": "🌸", "Summer": "☀", "Autumn": "🍂", "Winter": "❄"}
+
+def current_season():
+    """Season cycles every 7 days, based on week number."""
+    week = time.localtime().tm_yday // 7
+    return SEASONS[week % 4]
+
+
+# ── Achievement definitions ────────────────────────────────
+ACHIEVEMENTS = {
+    "first_catch":     {"name": "First Catch!",        "desc": "Catch your first wild creature."},
+    "first_badge":     {"name": "Badge Earned",         "desc": "Win your first gym badge."},
+    "all_badges":      {"name": "Badge Master",         "desc": "Collect all 7 badges."},
+    "champion":        {"name": "Champion!",            "desc": "Defeat the Elite Four."},
+    "first_evolution": {"name": "Evolution!",           "desc": "Evolve a creature for the first time."},
+    "team_full":       {"name": "Full House",           "desc": "Fill your team with 6 creatures."},
+    "rich":            {"name": "Money Bags",           "desc": "Accumulate ₽10,000 at once."},
+    "first_fish":      {"name": "Gone Fishin'",         "desc": "Catch your first fishing encounter."},
+    "grotto_found":    {"name": "Grotto Explorer",      "desc": "Discover a hidden grotto."},
+    "rival_winner":    {"name": "Rival Rivalry",        "desc": "Defeat your rival 3 times."},
+    "battle100":       {"name": "Veteran Trainer",      "desc": "Fight 100 battles."},
+}
+
+# ── Move Tutor data ──────────────────────────────────────
+WEATHER_POOL = [None, None, None, "Sunny", "Rainy", "Sandstorm", "Hail"]
+SEASON_WEATHER = {
+    "Spring": [None, None, "Rainy", "Rainy", "Sunny"],
+    "Summer": [None, "Sunny", "Sunny", "Sunny", "Sandstorm"],
+    "Autumn": [None, None, "Sandstorm", "Rainy", "Sunny"],
+    "Winter": [None, "Hail", "Hail", "Rainy", None],
+}
+
+MOVE_TUTORS = {
+    "Stonepeak":   [("Headbutt", 500),  ("Rock Throw", 400), ("Howl", 300)],
+    "Ashveil":     [("Fire Blast", 1500), ("Lava Plume", 1200), ("Swords Dance", 1000)],
+    "Frostholm":   [("Blizzard", 1500),  ("Ice Beam", 1200), ("Agility", 1000)],
+    "Mistveil":    [("Psychic", 1200),   ("Shadow Ball", 1000), ("Agility", 1000)],
+    "Shadowmere":  [("Night Slash", 800), ("Crunch", 900), ("Swords Dance", 1000)],
+    "Dragonspire": [("Dragon Rage", 2000), ("Earthquake", 2500), ("Swords Dance", 1500)],
+}
+
+# ── Day/Night cycle ──────────────────────────────────────
+def time_of_day():
+    h = time.localtime().tm_hour
+    if 6 <= h < 12:
+        return "Morning", C.YELLOW, "🌅"
+    elif 12 <= h < 18:
+        return "Afternoon", C.CYAN, "☀"
+    elif 18 <= h < 21:
+        return "Evening", C.MAGENTA, "🌆"
+    else:
+        return "Night", C.BLUE, "🌙"
+
+def night_bonus_areas():
+    """At night, ghost-types appear more and certain areas get bonus creatures."""
+    h = time.localtime().tm_hour
+    return h >= 21 or h < 6
+
+
+# ═══════════════════════════════════════════════
+#  GAME STATE
+# ═══════════════════════════════════════════════
+class Game:
+    def __init__(self):
+        self.player_name = ""
+        self.town        = "Rootvale"
+        self.team        = []
+        self.inventory   = {k: 0 for k in ITEMS}
+        self.inventory["Potion"]       = 3
+        self.inventory["Capture Ball"] = 5
+        self.inventory["Old Rod"]      = 1   # Start with fishing rod
+        self.inventory["Rare Candy"]   = 0
+        self.badges      = []
+        self.money       = 3000
+        self.steps       = 0
+        self.save_slot   = 1
+        self.rival       = RivalState()
+        self.achievements = []           # list of earned achievement keys
+        self.season      = current_season()
+        self._defeated_trainers = set()  # track rematched trainers by (area, name_hash)
+
+    # ── Achievement checker ────────────────────────────
+    def _check_achievement(self, key):
+        if key not in self.achievements and key in ACHIEVEMENTS:
+            self.achievements.append(key)
+            ach = ACHIEVEMENTS[key]
+            slow_print(f"  {C.YELLOW}🏆  Achievement unlocked: {C.BOLD}{ach['name']}{C.RESET}")
+            slow_print(f"     {C.GRAY}{ach['desc']}{C.RESET}")
+
+    # ── EXP & level-up handler (shared helper) ──────────
+    def _handle_exp_events(self, creature, events):
+        """Process levelup/newmove/movefull/evolution events. Returns True if evolved."""
+        from data.creatures import MOVES as MOVE_DATA
+        evolved = False
+        for etype, val in events:
+            if etype == "levelup":
+                slow_print(f"  {C.GREEN}★  {creature.name} grew to Lv.{val}!{C.RESET}")
+                # Achievement: battle100
+                self._check_achievement("battle100")
+            elif etype == "newmove":
+                slow_print(f"  {C.CYAN}❆  {creature.name} learned {val}!{C.RESET}")
+            elif etype == "movefull":
+                new_move = val
+                mv = MOVE_DATA[new_move]
+                slow_print(f"\n  {C.YELLOW}★  {creature.name} wants to learn "
+                           f"{C.BOLD}{new_move}{C.RESET}"
+                           f"{C.YELLOW}!{C.RESET}")
+                slow_print(f"     {C.GRAY}[{mv['type']}]  Pwr:{mv['power']}  "
+                           f"PP:{mv['pp']}{C.RESET}")
+                slow_print(f"  {C.RED}But {creature.name} already knows 4 moves!{C.RESET}")
+                print()
+                r_opts = []
+                for m in creature.moves:
+                    mm = MOVE_DATA[m]
+                    r_opts.append(f"Replace {C.BOLD}{m}{C.RESET}  "
+                                  f"{C.GRAY}[{mm['type']}] Pwr:{mm['power']} "
+                                  f"PP:{creature.pp.get(m,0)}/{mm['pp']}{C.RESET}")
+                r_opts.append(f"Don't learn {new_move}")
+                rc = menu(f"Which move to replace with {new_move}?", r_opts)
+                if rc < len(creature.moves):
+                    old_move = creature.moves[rc]
+                    creature.moves[rc] = new_move
+                    del creature.pp[old_move]
+                    creature.pp[new_move] = mv["pp"]
+                    slow_print(f"  {C.GREEN}{creature.name} forgot {old_move} "
+                               f"and learned {new_move}!{C.RESET}")
+                else:
+                    slow_print(f"  {C.GRAY}{creature.name} did not learn {new_move}.{C.RESET}")
+            elif etype == "evolution":
+                slow_print(f"\n  {C.MAGENTA}❆❆  {creature.name} is evolving…  ❆❆{C.RESET}")
+                time.sleep(0.8)
+                if confirm(f"  Evolve {creature.name} into {val}?"):
+                    old = creature.name
+                    creature.evolve(val)
+                    slow_print(f"  {C.MAGENTA}❆  {old} evolved into "
+                               f"{C.BOLD}{val}{C.RESET}{C.MAGENTA}!  ❆{C.RESET}")
+                    self._check_achievement("first_evolution")
+                    evolved = True
+        return evolved
+
+    # ── EXP & level-up handler ──────────────────
+    def award_exp(self, winner, loser):
+        from data.creatures import MOVES as MOVE_DATA
+        base = loser.level * 5
+        exp  = int(base * (1 + random.uniform(-0.1, 0.1)))
+
+        # Shared EXP: all alive bench creatures get a reduced split
+        bench = [c for c in self.team if c.is_alive() and c is not winner]
+        if bench:
+            bench_exp = max(1, exp // 2)
+            for bc in bench:
+                slow_print(f"  {bc.name} gained {C.GRAY}{bench_exp} EXP (shared){C.RESET}!")
+                b_events = bc.gain_exp(bench_exp)
+                for etype, val in b_events:
+                    if etype == "levelup":
+                        slow_print(f"  {C.GREEN}★  {bc.name} grew to Lv.{val}!{C.RESET}")
+                    elif etype == "newmove":
+                        slow_print(f"  {C.CYAN}✦  {bc.name} learned {val}!{C.RESET}")
+                    elif etype == "movefull":
+                        new_move = val
+                        mv = MOVE_DATA[new_move]
+                        slow_print(f"\n  {C.YELLOW}★  {bc.name} wants to learn "
+                                   f"{C.BOLD}{new_move}{C.RESET}"
+                                   f"{C.YELLOW}!{C.RESET}")
+                        slow_print(f"     {C.GRAY}[{mv['type']}]  Pwr:{mv['power']}  "
+                                   f"PP:{mv['pp']}{C.RESET}")
+                        slow_print(f"  {C.RED}But {bc.name} already knows 4 moves!{C.RESET}")
+                        print()
+                        r_opts = []
+                        for m in bc.moves:
+                            mm = MOVE_DATA[m]
+                            r_opts.append(f"Replace {C.BOLD}{m}{C.RESET}  "
+                                          f"{C.GRAY}[{mm['type']}] Pwr:{mm['power']} "
+                                          f"PP:{bc.pp.get(m,0)}/{mm['pp']}{C.RESET}")
+                        r_opts.append(f"Don't learn {new_move}")
+                        rc = menu(f"Which move to replace with {new_move}?", r_opts)
+                        if rc < len(bc.moves):
+                            old_move = bc.moves[rc]
+                            bc.moves[rc] = new_move
+                            del bc.pp[old_move]
+                            bc.pp[new_move] = mv["pp"]
+                            slow_print(f"  {C.GREEN}{bc.name} forgot {old_move} "
+                                       f"and learned {new_move}!{C.RESET}")
+                        else:
+                            slow_print(f"  {C.GRAY}{bc.name} did not learn {new_move}.{C.RESET}")
+                    elif etype == "evolution":
+                        slow_print(f"  {C.MAGENTA}✦✦  {bc.name} is evolving...{C.RESET}")
+                        import time as _time; _time.sleep(0.5)
+                        if confirm(f"  Evolve {bc.name} into {val}?"):
+                            old = bc.name
+                            bc.evolve(val)
+                            slow_print(f"  {C.MAGENTA}✦  {old} evolved into {C.BOLD}{val}{C.RESET}{C.MAGENTA}!{C.RESET}")
+
+        slow_print(f"\n  {winner.name} gained {C.YELLOW}{exp} EXP{C.RESET}!")
+        events = winner.gain_exp(exp)
+        for etype, val in events:
+            if etype == "levelup":
+                slow_print(f"  {C.GREEN}★  {winner.name} grew to Lv.{val}!{C.RESET}")
+            elif etype == "newmove":
+                slow_print(f"  {C.CYAN}✦  {winner.name} learned {val}!{C.RESET}")
+            elif etype == "movefull":
+                new_move = val
+                mv = MOVE_DATA[new_move]
+                slow_print(f"\n  {C.YELLOW}★  {winner.name} wants to learn "
+                           f"{C.BOLD}{new_move}{C.RESET}"
+                           f"{C.YELLOW}!{C.RESET}")
+                slow_print(f"     {C.GRAY}[{mv['type']}]  Pwr:{mv['power']}  "
+                           f"PP:{mv['pp']}{C.RESET}")
+                slow_print(f"  {C.RED}But {winner.name} already knows 4 moves!{C.RESET}")
+                print()
+                opts = []
+                for m in winner.moves:
+                    mm = MOVE_DATA[m]
+                    opts.append(f"Replace {C.BOLD}{m}{C.RESET}  "
+                                f"{C.GRAY}[{mm['type']}] Pwr:{mm['power']} "
+                                f"PP:{winner.pp.get(m,0)}/{mm['pp']}{C.RESET}")
+                opts.append(f"Don't learn {new_move}")
+                choice = menu(f"Which move to replace with {new_move}?", opts)
+                if choice < len(winner.moves):
+                    old_move = winner.moves[choice]
+                    winner.moves[choice] = new_move
+                    del winner.pp[old_move]
+                    winner.pp[new_move] = mv["pp"]
+                    slow_print(f"  {C.GREEN}{winner.name} forgot {old_move} "
+                               f"and learned {new_move}!{C.RESET}")
+                else:
+                    slow_print(f"  {C.GRAY}{winner.name} did not learn {new_move}.{C.RESET}")
+            elif etype == "evolution":
+                slow_print(f"\n  {C.MAGENTA}✦✦  {winner.name} is evolving...  ✦✦{C.RESET}")
+                time.sleep(0.8)
+                if confirm(f"  Evolve {winner.name} into {val}?"):
+                    old = winner.name
+                    winner.evolve(val)
+                    slow_print(f"  {C.MAGENTA}✦  {old} evolved into "
+                               f"{C.BOLD}{val}{C.RESET}{C.MAGENTA}!  ✦{C.RESET}")
+        press_enter()
+
+    def earn_money(self, amount):
+        self.money += amount
+        slow_print(f"  {C.YELLOW}You earned ₽{amount}!{C.RESET}")
+
+    def save(self):
+        save_game(self.player_name, self.town, self.team,
+                  self.inventory, self.badges, self.money,
+                  self.steps, slot=self.save_slot,
+                  rival=getattr(self, 'rival', None))
+        slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
+
+    # ── INN ────────────────────────────────────
+    def visit_inn(self, cost):
+        from data.creatures import MOVES as MOVE_DATA
+        clear()
+        section(f"🏨  INN  —  {C.YELLOW}₽{cost}{C.RESET} to heal all creatures")
+        team_summary(self.team)
+        if not confirm(f"\n  Pay ₽{cost} to fully heal your team?"):
+            return
+        if self.money < cost:
+            slow_print(f"  {C.RED}Not enough money! Need ₽{cost}.{C.RESET}")
+            press_enter(); return
+        self.money -= cost
+        for c in self.team:
+            c.hp     = c.max_hp
+            c.status = None
+            c.pp     = {m: MOVE_DATA[m]["pp"] for m in c.moves}
+        slow_print(f"  {C.GREEN}Your team is fully healed! Rest well, trainer.{C.RESET}")
+        press_enter()
+
+    # ── BAG ────────────────────────────────────
+    def open_bag(self):
+        from data.creatures import MOVES as MOVE_DATA
+        while True:
+            clear()
+            section("🎒  BAG")
+            have = {k: v for k, v in self.inventory.items() if v > 0}
+            if not have:
+                slow_print("  Your bag is empty.")
+                press_enter(); return
+
+            opts = [f"{k} x{v}  {C.GRAY}({ITEMS[k]['desc']}){C.RESET}"
+                    for k, v in have.items()]
+            opts.append("← Close Bag")
+            choice = menu("Items:", opts)
+            if choice == len(have):
+                return
+
+            item_name = list(have.keys())[choice]
+            idata     = ITEMS[item_name]
+
+            if idata["type"] == "heal":
+                need_heal = [c for c in self.team if c.is_alive() and c.hp < c.max_hp]
+                if not need_heal:
+                    slow_print("  No creature needs healing.")
+                    press_enter(); continue
+                t_opts = [f"{c.name} Lv.{c.level} {hp_bar(c.hp, c.max_hp, 12)}"
+                          for c in need_heal] + ["← Back"]
+                tc = menu("Heal which?", t_opts)
+                if tc == len(need_heal): continue
+                target = need_heal[tc]
+                healed = min(idata["amount"], target.max_hp - target.hp)
+                target.heal(idata["amount"])
+                if idata.get("amount", 0) >= 9999:
+                    target.status = None
+                self.inventory[item_name] -= 1
+                slow_print(f"  {C.GREEN}{target.name} recovered {healed} HP!{C.RESET}")
+                press_enter()
+
+            elif idata["type"] == "revive":
+                fainted = [c for c in self.team if not c.is_alive()]
+                if not fainted:
+                    slow_print("  No fainted creatures."); press_enter(); continue
+                t_opts = [f"{c.name} Lv.{c.level}" for c in fainted] + ["← Back"]
+                tc = menu("Revive which?", t_opts)
+                if tc == len(fainted): continue
+                target = fainted[tc]
+                target.hp = int(target.max_hp * idata["amount"])
+                self.inventory[item_name] -= 1
+                slow_print(f"  {C.GREEN}{target.name} was revived with "
+                           f"{target.hp} HP!{C.RESET}")
+                press_enter()
+
+            elif idata["type"] == "cure":
+                status_filter = idata["status"]
+                if status_filter == "all":
+                    sick = [c for c in self.team if c.status]
+                else:
+                    sick = [c for c in self.team if c.status == status_filter]
+                if not sick:
+                    slow_print("  No creature has that status."); press_enter(); continue
+                t_opts = [f"{c.name} [{c.status}]" for c in sick] + ["← Back"]
+                tc = menu("Cure which?", t_opts)
+                if tc == len(sick): continue
+                sick[tc].status = None
+                self.inventory[item_name] -= 1
+                slow_print(f"  {C.GREEN}Cured!{C.RESET}")
+                press_enter()
+
+            elif idata["type"] == "pp":
+                alive = [c for c in self.team if c.is_alive()]
+                if not alive:
+                    slow_print("  No alive creatures."); press_enter(); continue
+                t_opts = [f"{c.name} Lv.{c.level}" for c in alive] + ["← Back"]
+                tc = menu("Restore PP for which?", t_opts)
+                if tc == len(alive): continue
+                target = alive[tc]
+                for m in target.moves:
+                    max_pp = MOVE_DATA[m]["pp"]
+                    target.pp[m] = min(max_pp, target.pp.get(m, 0) + idata["amount"])
+                self.inventory[item_name] -= 1
+                slow_print(f"  {C.GREEN}{target.name}'s PP restored!{C.RESET}")
+                press_enter()
+
+            elif idata["type"] in ("capture", "escape", "boost"):
+                slow_print("  Use this during a battle or exploration.")
+                press_enter()
+
+    # ── HELD ITEM ASSIGNMENT ────────────────────
+    def manage_held_items(self):
+        """Let player give/take held items from team members."""
+        # Items that cannot be held (consumables used from bag only)
+        NON_HOLDABLE = {"Escape Rope", "Old Rod", "Good Rod",
+                        "Capture Ball", "Great Ball", "Ultra Ball", "Master Ball",
+                        "Revive", "Max Revive",
+                        "Potion", "Super Potion", "Hyper Potion", "Full Restore",
+                        "Antidote", "Burn Heal", "Awakening", "Ice Heal",
+                        "Cheer Up", "Full Heal",
+                        "Elixir", "Max Elixir",
+                        "X Attack", "X Defense"}
+        clear()
+        section("📦  HELD ITEMS")
+        slow_print(f"  {C.GRAY}Give any compatible item to a creature to hold in battle.{C.RESET}\n")
+
+        have_holdable = [k for k, v in self.inventory.items()
+                         if v > 0 and k not in NON_HOLDABLE]
+        if not have_holdable and not any(c.held_item for c in self.team):
+            slow_print("  No holdable items in bag and no held items on team.")
+            press_enter(); return
+
+        opts = [f"{c.name} Lv.{c.level}  Holding: {C.YELLOW}{c.held_item or 'nothing'}{C.RESET}"
+                for c in self.team if c.is_alive()]
+        opts.append("← Back")
+        idx = menu("Which creature?", opts)
+        alive = [c for c in self.team if c.is_alive()]
+        if idx == len(alive): return
+        target = alive[idx]
+
+        sub_opts = []
+        for item_name in have_holdable:
+            desc = ITEMS.get(item_name, {}).get("desc", "")
+            sub_opts.append(f"Give {item_name}  {C.GRAY}({desc}){C.RESET}")
+        if target.held_item:
+            sub_opts.append(f"Take back {target.held_item}")
+        sub_opts.append("← Cancel")
+        sc = menu(f"Held item for {target.name}:", sub_opts)
+
+        if sc < len(have_holdable):
+            chosen_item = have_holdable[sc]
+            if target.held_item:
+                # Return old item to bag
+                self.inventory[target.held_item] = self.inventory.get(target.held_item, 0) + 1
+            target.held_item = chosen_item
+            target._held_item_used = False
+            self.inventory[chosen_item] -= 1
+            slow_print(f"  {C.GREEN}{target.name} is now holding {chosen_item}!{C.RESET}")
+        elif target.held_item and sc == len(have_holdable):
+            self.inventory[target.held_item] = self.inventory.get(target.held_item, 0) + 1
+            target.held_item = None
+            slow_print(f"  {C.GREEN}Item taken back.{C.RESET}")
+        press_enter()
+
+    # ── CREATURE MANAGEMENT HUB ──────────────────────
+    def open_creatures(self):
+        """Central hub: pick a creature, then manage it fully."""
+        from data.creatures import MOVES as MD
+        from engine.battle  import ABILITIES
+
+        USABLE_ON_CREATURE = {
+            "heal", "cure", "revive", "pp",
+        }
+        # Items that can be applied directly to a creature outside battle
+        FIELD_ITEMS = {
+            "Rare Candy": "rare_candy",
+        }
+        # Non-holdable item types (can't be assigned as held)
+        NON_HOLDABLE = {
+            "Escape Rope", "Old Rod", "Good Rod",
+            "Capture Ball", "Great Ball", "Ultra Ball", "Master Ball",
+            "Revive", "Max Revive",
+            "Potion", "Super Potion", "Hyper Potion", "Full Restore",
+            "Antidote", "Burn Heal", "Awakening", "Ice Heal",
+            "Cheer Up", "Full Heal",
+            "Elixir", "Max Elixir",
+            "X Attack", "X Defense", "X Sp.Atk", "X Sp.Def", "X Speed",
+        }
+
+        while True:
+            clear()
+            section("👥  CREATURES")
+            if not self.team:
+                slow_print("  No creatures yet!"); press_enter(); return
+
+            # Team list with HP bars
+            opts = []
+            for c in self.team:
+                faint_tag = f" {C.RED}[FAINTED]{C.RESET}" if not c.is_alive() else ""
+                held_tag  = f"  {C.YELLOW}[{c.held_item}]{C.RESET}" if c.held_item else ""
+                opts.append(
+                    f"{C.BOLD}{c.name}{C.RESET} Lv.{c.level}  "
+                    f"{hp_bar(c.hp, c.max_hp, 12)}{faint_tag}{held_tag}"
+                )
+            opts.append("🔀  Reorder team")
+            opts.append("← Back")
+            idx = menu("Which creature?", opts)
+
+            if idx == len(self.team) + 1:   # ← Back
+                return
+            if idx == len(self.team):        # Reorder team
+                self._reorder_team_inline()
+                continue
+
+            c = self.team[idx]
+
+            # ── Per-creature action loop ──────────────────────
+            while True:
+                clear()
+                # ── Full stat card ──
+                banner(f"  {c.name}  Lv.{c.level}  ", C.CYAN)
+                from ui.display import TYPE_COLORS
+                types_str = "/".join(
+                    f"{TYPE_COLORS.get(t, C.WHITE)}{t.upper()}{C.RESET}"
+                    for t in c.types
+                )
+                print(f"  Type    : {types_str}")
+                ab_name = c.ability or "None"
+                ab_desc = ABILITIES.get(ab_name, {}).get("desc", "")
+                print(f"  Ability : {C.BOLD}{ab_name}{C.RESET}  {C.GRAY}{ab_desc}{C.RESET}")
+                if c.held_item:
+                    print(f"  Held    : {C.YELLOW}{c.held_item}{C.RESET}")
+                print(f"  {C.GRAY}{CREATURES[c.name]['desc']}{C.RESET}")
+                print()
+
+                # HP + EXP
+                print(f"  HP   {hp_bar(c.hp, c.max_hp)}")
+                if hasattr(c, 'exp') and c.exp_to_next > 0:
+                    ratio  = min(1.0, c.exp / c.exp_to_next)
+                    filled = int(ratio * 20)
+                    bar    = "▪" * filled + "·" * (20 - filled)
+                    print(f"  EXP  {C.CYAN}[{bar}]{C.RESET} {c.exp}/{c.exp_to_next}")
+                print()
+
+                # Core stats
+                print(f"  {C.BOLD}{'STAT':<10} {'BASE':>6}{C.RESET}")
+                print(f"  {'─'*18}")
+                print(f"  {'HP':<10} {c.max_hp:>6}")
+                print(f"  {'Attack':<10} {c.atk:>6}")
+                print(f"  {'Defense':<10} {c.defense:>6}")
+                print(f"  {'Sp. Atk':<10} {c.sp_atk:>6}")
+                print(f"  {'Sp. Def':<10} {c.sp_def:>6}")
+                print(f"  {'Speed':<10} {c.spd:>6}")
+                print()
+
+                # Moves
+                print(f"  {C.BOLD}MOVES:{C.RESET}")
+                for i, m in enumerate(c.moves, 1):
+                    mv     = MD[m]
+                    pp_now = c.pp.get(m, 0)
+                    color  = C.GREEN if pp_now > mv["pp"] // 3 else C.RED
+                    print(f"  {i}. {C.BOLD}{m:<16}{C.RESET} "
+                          f"[{mv['type']:<8}] "
+                          f"{'Phys' if mv['category']=='physical' else 'Spec' if mv['category']=='special' else 'Stat':<4}  "
+                          f"Pwr:{mv['power']:<4} "
+                          f"PP:{color}{pp_now}{C.RESET}/{mv['pp']}")
+
+                # Evolution info
+                evo = CREATURES[c.name]["evolution"]
+                if evo:
+                    for lv, nxt in evo.items():
+                        print(f"\n  {C.CYAN}→ Evolves into {nxt} at Lv.{lv}{C.RESET}")
+                else:
+                    print(f"\n  {C.MAGENTA}✦ Final form{C.RESET}")
+
+                # Status
+                if c.status:
+                    print(f"  Status  : {C.RED}{c.status.upper()}{C.RESET}")
+
+                print()
+
+                # Action menu
+                actions = [
+                    "⚔  Reorder moves",
+                    "📦  Change held item",
+                    "🎒  Use item",
+                    "← Back to team",
+                ]
+                ac = menu("Action:", actions)
+
+                # ── Reorder moves ──
+                if ac == 0:
+                    if len(c.moves) < 2:
+                        slow_print(f"  {C.YELLOW}Only one move — nothing to reorder.{C.RESET}")
+                        press_enter(); continue
+                    while True:
+                        clear()
+                        section(f"⚔  REORDER MOVES  —  {c.name}")
+                        for i, m in enumerate(c.moves, 1):
+                            mv = MD[m]
+                            print(f"  {i}. {C.BOLD}{m:<16}{C.RESET} [{mv['type']}] Pwr:{mv['power']}")
+                        move_opts = [f"{m}" for m in c.moves] + ["← Done"]
+                        src = menu("Move which slot?", move_opts)
+                        if src == len(c.moves): break
+                        dst_opts = [f"{m}" for i, m in enumerate(c.moves) if i - 1 != src] + ["← Cancel"]
+                        dst_raw  = menu(f"Swap '{c.moves[src]}' with?", dst_opts)
+                        if dst_raw == len(c.moves) - 1: continue
+                        actual = [i for i in range(len(c.moves)) if i != src]
+                        dst    = actual[dst_raw]
+                        c.moves[src], c.moves[dst] = c.moves[dst], c.moves[src]
+                        c.pp[c.moves[src]], c.pp[c.moves[dst]] = c.pp[c.moves[dst]], c.pp[c.moves[src]]
+                        slow_print(f"  {C.GREEN}Moves swapped!{C.RESET}")
+
+                # ── Change held item ──
+                elif ac == 1:
+                    have_holdable = [k for k, v in self.inventory.items()
+                                     if v > 0 and k not in NON_HOLDABLE]
+                    sub_opts = []
+                    for item_name in have_holdable:
+                        desc = ITEMS.get(item_name, {}).get("desc", "")
+                        sub_opts.append(f"Give {item_name}  {C.GRAY}({desc}){C.RESET}")
+                    if c.held_item:
+                        sub_opts.append(f"Take back {c.held_item}")
+                    sub_opts.append("← Cancel")
+                    sc = menu(f"Held item for {c.name}:", sub_opts)
+                    cancel_idx = len(sub_opts) - 1
+                    take_idx   = len(have_holdable) if c.held_item else None
+                    if sc == cancel_idx:
+                        pass
+                    elif take_idx is not None and sc == take_idx:
+                        self.inventory[c.held_item] = self.inventory.get(c.held_item, 0) + 1
+                        slow_print(f"  {C.GREEN}Took back {c.held_item}.{C.RESET}")
+                        c.held_item = None
+                        c._held_item_used = False
+                    elif sc < len(have_holdable):
+                        chosen = have_holdable[sc]
+                        if c.held_item:
+                            self.inventory[c.held_item] = self.inventory.get(c.held_item, 0) + 1
+                        c.held_item = chosen
+                        c._held_item_used = False
+                        self.inventory[chosen] -= 1
+                        slow_print(f"  {C.GREEN}{c.name} is now holding {chosen}!{C.RESET}")
+                    press_enter()
+
+                # ── Use item ──
+                elif ac == 2:
+                    # Build usable list: heal/cure/revive/pp + Rare Candy
+                    usable = {}
+                    for k, v in self.inventory.items():
+                        if v <= 0: continue
+                        itype = ITEMS.get(k, {}).get("type", "")
+                        if itype in ("heal", "cure", "revive", "pp"):
+                            usable[k] = v
+                        if k == "Rare Candy":
+                            usable[k] = v
+                    if not usable:
+                        slow_print(f"  {C.YELLOW}No usable items in bag.{C.RESET}")
+                        press_enter(); continue
+                    item_opts = [
+                        f"{k} x{v}  {C.GRAY}({ITEMS[k]['desc']}){C.RESET}"
+                        for k, v in usable.items()
+                    ] + ["← Cancel"]
+                    ic = menu(f"Use on {c.name}:", item_opts)
+                    if ic == len(usable):
+                        continue
+                    item_name = list(usable.keys())[ic]
+                    idata     = ITEMS[item_name]
+                    itype     = idata.get("type", "")
+
+                    if item_name == "Rare Candy":
+                        if c.level >= 100:
+                            slow_print(f"  {C.YELLOW}{c.name} is already at max level!{C.RESET}")
+                        else:
+                            self.inventory[item_name] -= 1
+                            events = c.gain_exp(c.exp_to_next - c.exp)  # force level-up
+                            self._handle_exp_events(c, events)
+                            slow_print(f"  {C.GREEN}{c.name} grew to Lv.{c.level}!{C.RESET}")
+                        press_enter()
+
+                    elif itype == "heal":
+                        if not c.is_alive():
+                            slow_print(f"  {C.RED}{c.name} is fainted — revive it first.{C.RESET}")
+                        elif c.hp >= c.max_hp:
+                            slow_print(f"  {C.YELLOW}{c.name} is already at full HP.{C.RESET}")
+                        else:
+                            healed = min(idata["amount"], c.max_hp - c.hp)
+                            c.heal(idata["amount"])
+                            if idata.get("amount", 0) >= 9999:
+                                c.status = None
+                            self.inventory[item_name] -= 1
+                            slow_print(f"  {C.GREEN}{c.name} recovered {healed} HP!{C.RESET}")
+                        press_enter()
+
+                    elif itype == "cure":
+                        target_status = idata["status"]
+                        if target_status == "all":
+                            if not c.status:
+                                slow_print(f"  {C.YELLOW}{c.name} has no status to cure.{C.RESET}")
+                            else:
+                                c.status = None; c.sleep_turns = 0; c.confusion_turns = 0
+                                self.inventory[item_name] -= 1
+                                slow_print(f"  {C.GREEN}{c.name} was fully cured!{C.RESET}")
+                        elif c.status == target_status:
+                            c.status = None; c.sleep_turns = 0; c.confusion_turns = 0
+                            self.inventory[item_name] -= 1
+                            slow_print(f"  {C.GREEN}{c.name} was cured!{C.RESET}")
+                        else:
+                            slow_print(f"  {C.YELLOW}No effect — {c.name} doesn't have that status.{C.RESET}")
+                        press_enter()
+
+                    elif itype == "revive":
+                        if c.is_alive():
+                            slow_print(f"  {C.YELLOW}{c.name} hasn't fainted.{C.RESET}")
+                        else:
+                            c.hp = int(c.max_hp * idata["amount"])
+                            self.inventory[item_name] -= 1
+                            slow_print(f"  {C.GREEN}{c.name} was revived with {c.hp} HP!{C.RESET}")
+                        press_enter()
+
+                    elif itype == "pp":
+                        if not c.moves:
+                            slow_print(f"  {C.YELLOW}{c.name} has no moves.{C.RESET}")
+                        else:
+                            from data.creatures import MOVES as MOVE_DATA
+                            for m in c.moves:
+                                max_pp = MOVE_DATA[m]["pp"]
+                                c.pp[m] = min(max_pp, c.pp.get(m, 0) + idata["amount"])
+                            self.inventory[item_name] -= 1
+                            slow_print(f"  {C.GREEN}{c.name}'s move PP restored!{C.RESET}")
+                        press_enter()
+
+                # ── Back ──
+                elif ac == 3:
+                    break
+
+    def _reorder_team_inline(self):
+        """Reorder team by picking a creature and a destination slot."""
+        clear()
+        section("🔀  REORDER TEAM")
+        while True:
+            opts = [
+                f"{i+1}. {c.name} Lv.{c.level}  {hp_bar(c.hp, c.max_hp, 12)}"
+                for i, c in enumerate(self.team)
+            ] + ["← Done"]
+            src = menu("Move which creature?", opts)
+            if src == len(self.team): break
+            dst_opts = [
+                f"{i+1}. {c.name}" for i, c in enumerate(self.team) if i != src
+            ] + ["← Cancel"]
+            dst_raw = menu(f"Move {self.team[src].name} to which slot?", dst_opts)
+            if dst_raw == len(dst_opts) - 1: continue
+            actual = [i for i in range(len(self.team)) if i != src]
+            dst    = actual[dst_raw]
+            self.team.insert(dst, self.team.pop(src))
+            slow_print(f"  {C.GREEN}Team reordered!{C.RESET}")
+        press_enter()
+
+
+
+    # ── BADGES ─────────────────────────────────
+    def open_badges(self):
+        clear()
+        section("🏅  BADGES")
+        total = len(REQUIRED_BADGES)
+        print(f"  Collected: {C.YELLOW}{len(self.badges)}/{total}{C.RESET}\n")
+        for b in REQUIRED_BADGES:
+            if b in self.badges:
+                print(f"  {C.YELLOW}★  {b}{C.RESET}")
+            else:
+                print(f"  {C.GRAY}○  {b}{C.RESET}")
+        press_enter()
+
+    # ── TRAINER STATS ───────────────────────────
+    def open_stats(self):
+        clear()
+        section("📊  TRAINER CARD")
+        tod, tod_color, tod_icon = time_of_day()
+        slow_print(f"  Name    : {C.BOLD}{self.player_name}{C.RESET}")
+        slow_print(f"  Money   : {C.YELLOW}₽{self.money}{C.RESET}")
+        slow_print(f"  Badges  : {len(self.badges)}/{len(REQUIRED_BADGES)}")
+        slow_print(f"  Battles : {self.steps}")
+        slow_print(f"  Town    : {self.town}")
+        slow_print(f"  Time    : {tod_color}{tod_icon} {tod}{C.RESET}")
+        # Rival score
+        r = getattr(self, 'rival', None)
+        if r and r.starter:
+            score_color = C.GREEN if r.player_wins >= r.rival_wins else C.RED
+            slow_print(f"  Rival   : {C.BOLD}{r.name}{C.RESET}  "
+                       f"({score_color}You {r.player_wins}\u2013{r.rival_wins} {r.name}{C.RESET})")
+        print()
+        team_summary(self.team)
+        press_enter()
+
+    # ── SHOP (buy + sell combined) ──────────────────────────
+    def visit_shop(self, stock, badge_count=0):
+        BADGE_LOCKED = {
+            "Hyper Potion": 3, "Full Restore": 5, "Ultra Ball": 3,
+            "Master Ball": 7, "Max Revive": 5, "Max Elixir": 6,
+            "X Attack": 2, "X Defense": 2,
+        }
+        NON_SELLABLE = {"escape", "fish"}
+
+        while True:
+            clear()
+            section(f"🛒  SHOP  {C.YELLOW}₽{self.money}{C.RESET}")
+            top = menu("What would you like to do?",
+                       ["🛠  Buy", "💰  Sell", "← Leave"])
+
+            # ── BUY ──────────────────────────────────────────────────
+            if top == 0:
+                available = [item for item in stock
+                             if badge_count >= BADGE_LOCKED.get(item, 0)]
+                locked    = [item for item in stock if item not in available]
+                while True:
+                    clear()
+                    section(f"🛠  BUY  {C.YELLOW}₽{self.money}{C.RESET}")
+                    if locked:
+                        slow_print(f"  {C.GRAY}Locked (need more badges): {', '.join(locked)}{C.RESET}")
+                    opts = [
+                        f"{item:<20} {C.YELLOW}₽{ITEMS[item]['price']}{C.RESET}  "
+                        f"{C.GRAY}({ITEMS[item]['desc']}){C.RESET}"
+                        for item in available
+                    ] + ["← Back"]
+                    choice = menu("Buy which item?", opts)
+                    if choice == len(available):
+                        break
+                    item  = available[choice]
+                    price = ITEMS[item]["price"]
+                    max_can = self.money // price if price > 0 else 99
+                    if max_can == 0:
+                        slow_print(f"  {C.RED}Not enough money!{C.RESET}")
+                        press_enter(); continue
+                    qty = self._ask_qty(1, max_can, f"Buy how many {item}? (max {max_can})")
+                    if qty == 0:
+                        continue
+                    total = price * qty
+                    self.money -= total
+                    self.inventory[item] = self.inventory.get(item, 0) + qty
+                    slow_print(f"  {C.GREEN}Bought {qty}x {item} for {C.YELLOW}₽{total}{C.RESET}  "
+                               f"| Remaining: {C.YELLOW}₽{self.money}{C.RESET}")
+                    press_enter()
+
+            # ── SELL ─────────────────────────────────────────────────
+            elif top == 1:
+                while True:
+                    clear()
+                    section(f"💰  SELL  {C.YELLOW}₽{self.money}{C.RESET}")
+                    sellable = {
+                        k: v for k, v in self.inventory.items()
+                        if v > 0
+                        and ITEMS.get(k, {}).get("price", 0) > 0
+                        and ITEMS.get(k, {}).get("type") not in NON_SELLABLE
+                    }
+                    if not sellable:
+                        slow_print("  Nothing to sell.")
+                        press_enter(); break
+                    opts = [
+                        f"{k:<20} x{v:<4} {C.GRAY}sell @ {C.YELLOW}₽{ITEMS[k]['price']//2}{C.RESET}{C.GRAY} each{C.RESET}"
+                        for k, v in sellable.items()
+                    ] + ["← Back"]
+                    choice = menu("Sell which item?", opts)
+                    if choice == len(sellable):
+                        break
+                    item    = list(sellable.keys())[choice]
+                    max_qty = sellable[item]
+                    qty = self._ask_qty(1, max_qty, f"Sell how many {item}? (max {max_qty})")
+                    if qty == 0:
+                        continue
+                    sell_price = (ITEMS[item]["price"] // 2) * qty
+                    self.inventory[item] -= qty
+                    self.money += sell_price
+                    slow_print(f"  {C.GREEN}Sold {qty}x {item} for {C.YELLOW}₽{sell_price}{C.RESET}  "
+                               f"| Balance: {C.YELLOW}₽{self.money}{C.RESET}")
+                    press_enter()
+
+            # ── Leave ──
+            else:
+                return
+
+    def _ask_qty(self, lo, hi, prompt):
+        """Prompt for an integer quantity between lo and hi. Returns 0 to cancel."""
+        if lo == hi:
+            return lo
+        slow_print(f"  {C.CYAN}{prompt}{C.RESET}")
+        while True:
+            raw = input(f"  {C.GRAY}(enter number, or 0 to cancel) > {C.RESET}").strip()
+            if raw == "0":
+                return 0
+            if raw.isdigit():
+                n = int(raw)
+                if lo <= n <= hi:
+                    return n
+            slow_print(f"  {C.RED}Enter a number between {lo} and {hi}, or 0 to cancel.{C.RESET}")
+
+    # ── MOVE TUTOR ──────────────────────────────
+    def visit_move_tutor(self, town_name):
+        from data.creatures import MOVES as MOVE_DATA
+        tutors = MOVE_TUTORS.get(town_name, [])
+        if not tutors:
+            slow_print("  No move tutor here."); press_enter(); return
+        clear()
+        section(f"🎓  MOVE TUTOR  —  {town_name}")
+        slow_print(f"  {C.GRAY}\"I can teach your creatures powerful techniques!\"{C.RESET}\n")
+        alive = [c for c in self.team if c.is_alive()]
+        if not alive:
+            slow_print("  No alive creatures."); press_enter(); return
+
+        tutor_opts = [f"{m}  {C.YELLOW}₽{cost}{C.RESET}  "
+                      f"{C.GRAY}[{MOVE_DATA[m]['type']}] Pwr:{MOVE_DATA[m]['power']}{C.RESET}"
+                      for m, cost in tutors]
+        tutor_opts.append("Leave")
+        tc = menu("Which move to learn?", tutor_opts)
+        if tc == len(tutors): return
+
+        move_name, cost = tutors[tc]
+        mv = MOVE_DATA[move_name]
+        if self.money < cost:
+            slow_print(f"  {C.RED}Not enough money! Need ₽{cost}.{C.RESET}")
+            press_enter(); return
+
+        c_opts = [f"{c.name} Lv.{c.level}" for c in alive] + ["Cancel"]
+        cc = menu(f"Teach {move_name} to which creature?", c_opts)
+        if cc == len(alive): return
+        target = alive[cc]
+
+        if move_name in target.moves:
+            slow_print(f"  {C.YELLOW}{target.name} already knows {move_name}!{C.RESET}")
+            press_enter(); return
+
+        self.money -= cost
+        if len(target.moves) < 4:
+            target.moves.append(move_name)
+            target.pp[move_name] = mv["pp"]
+            slow_print(f"  {C.GREEN}{target.name} learned {move_name}!{C.RESET}")
+        else:
+            # Must replace
+            slow_print(f"  {target.name} already knows 4 moves. Choose one to replace:")
+            r_opts = [f"Replace {m}  {C.GRAY}[{MOVE_DATA[m]['type']}] Pwr:{MOVE_DATA[m]['power']}{C.RESET}"
+                      for m in target.moves] + ["Cancel (don't learn)"]
+            rc = menu("Replace which?", r_opts)
+            if rc == len(target.moves):
+                self.money += cost  # refund
+            else:
+                old = target.moves[rc]
+                target.moves[rc] = move_name
+                del target.pp[old]
+                target.pp[move_name] = mv["pp"]
+                slow_print(f"  {C.GREEN}{target.name} forgot {old} and learned {move_name}!{C.RESET}")
+        press_enter()
+
+    # ── REORDER TEAM (legacy, kept for internal use) ──────────
+    def reorder_team(self):
+        """Let player drag-reorder their team."""
+        clear()
+        section("🔀  REORDER TEAM")
+        slow_print(f"  {C.GRAY}Pick a creature to move, then pick its new position.{C.RESET}\n")
+        while True:
+            opts = [f"{i+1}. {c.name} Lv.{c.level}  {hp_bar(c.hp, c.max_hp, 12)}"
+                    for i, c in enumerate(self.team)]
+            opts.append("← Done")
+            src = menu("Move which creature?", opts)
+            if src == len(self.team): break
+            dst_opts = [f"{i+1}. {c.name}" for i, c in enumerate(self.team)
+                        if i != src]
+            dst_opts.append("← Cancel")
+            dst_raw = menu(f"Move {self.team[src].name} to which slot?", dst_opts)
+            if dst_raw == len(dst_opts) - 1: continue
+            # Map dst_raw back to actual index (skipping src)
+            actual_indices = [i for i in range(len(self.team)) if i != src]
+            dst = actual_indices[dst_raw]
+            self.team.insert(dst, self.team.pop(src))
+            slow_print(f"  {C.GREEN}Team reordered!{C.RESET}")
+        press_enter()
+
+    # ── PICK LEAD ──────────────────────────────
+    def _pick_lead(self, current=None):
+        alive = [c for c in self.team if c.is_alive()]
+        if not alive:
+            slow_print(f"  {C.RED}All your creatures fainted! Visit an Inn to heal.{C.RESET}")
+            press_enter(); return None
+        # If current lead is still alive, reuse it (no prompt needed)
+        if current is not None and current.is_alive():
+            return current
+        if len(alive) == 1:
+            return alive[0]
+        opts = [f"{c.name} Lv.{c.level}  {hp_bar(c.hp, c.max_hp, 12)}"
+                for c in alive]
+        idx = menu("Lead with which creature?", opts)
+        return alive[idx]
+
+    # ── GYM ────────────────────────────────────
+    def challenge_gym(self, gym_data):
+        badge  = gym_data["badge"]
+        leader = gym_data["leader"]
+        quote  = gym_data.get("quote", "Prepare yourself!")
+
+        if badge in self.badges:
+            slow_print(f"  {C.YELLOW}You already have the {badge}.{C.RESET}")
+            press_enter(); return
+
+        banner(f"  GYM LEADER  {leader.upper()}  ", C.RED)
+        slow_print(f"  {C.BOLD}{leader}{C.RESET}: «{quote}»")
+        press_enter()
+
+        player_c = self._pick_lead()
+        if player_c is None: return
+
+        prize_money = 0
+        for cname, lv in gym_data["team"]:
+            enemy  = Creature(cname, lv, is_player=False)
+            result, obj = run_battle(player_c, enemy, self.inventory,
+                                     self.team, wild=False, trainer_name=leader)
+            if result == "win":
+                self.steps += 1
+                self.award_exp(player_c, enemy)
+                prize_money += lv * 60
+                alive = [c for c in self.team if c.is_alive()]
+                if alive and not player_c.is_alive():
+                    player_c = alive[0]
+            elif result == "lose":
+                slow_print(f"\n  {C.RED}You were defeated! Visit an Inn to recover.{C.RESET}")
+                press_enter(); return
+
+        banner(f"  YOU DEFEATED {leader.upper()}!  ", C.GREEN)
+        slow_print(f"  {C.BOLD}{leader}{C.RESET}: «You've earned the "
+                   f"{C.YELLOW}{badge}{C.RESET}!»")
+        self.badges.append(badge)
+        self.earn_money(prize_money)
+        # Auto-save after each badge
+        self.save()
+        press_enter()
+        # Rival encounter check — some encounters trigger right after a gym win
+        trigger_rival_if_due(self)
+
+    # ── EXPLORE ────────────────────────────────
+    def explore(self, area_name):
+        clear()
+        section(f"🌿  EXPLORING  {area_name}")
+        weather = random.choice(WEATHER_POOL)
+        if weather:
+            slow_print(f"  {C.CYAN}☁  Weather today: {weather}{C.RESET}")
+
+        # Day/Night flavour
+        tod, tod_color, tod_icon = time_of_day()
+        slow_print(f"  {tod_color}{tod_icon}  It is {tod}.{C.RESET}")
+        if night_bonus_areas():
+            slow_print(f"  {C.BLUE}👻  Ghost-type creatures are more active at night!{C.RESET}")
+        slow_print(f"  You venture into {area_name}...", 0.02)
+
+        trainer_pool = RANDOM_TRAINERS.get(area_name, [])
+        steps_in_area = 0
+        player_c = self._pick_lead()  # establish lead once at area entry
+        if player_c is None: return
+
+        while True:
+            clear()
+            section(f"🌿  EXPLORING  {area_name}")
+            alive_hp = "  ".join(
+                f"{C.BOLD}{c.name}{C.RESET} {hp_bar(c.hp, c.max_hp, 10)}"
+                for c in self.team if c.is_alive()
+            )
+            if alive_hp:
+                print(f"  {alive_hp}")
+            opts = ["Walk further", "🏕  Rest (heal 20% HP)", "← Return to town"]
+            if self.inventory.get("Escape Rope", 0) > 0:
+                opts.insert(2, "🪢  Use Escape Rope (leave instantly)")
+            choice = menu("", opts)
+            label  = opts[choice]
+
+            if "Return" in label:
+                slow_print("  You leave the area safely."); break
+
+            if "Escape Rope" in label:
+                self.inventory["Escape Rope"] -= 1
+                slow_print(f"  {C.CYAN}You escape using the rope!{C.RESET}")
+                press_enter(); break
+
+            if "Rest" in label:
+                clear()
+                section(f"🏕  REST  —  {area_name}")
+                healed_any = False
+                for c in self.team:
+                    if c.is_alive() and c.hp < c.max_hp:
+                        old_hp = c.hp
+                        c.heal(int(c.max_hp * 0.2))
+                        slow_print(f"  {C.GREEN}{c.name} restored {c.hp - old_hp} HP "
+                                   f"({c.hp}/{c.max_hp}){C.RESET}")
+                        healed_any = True
+                if not healed_any:
+                    slow_print(f"  {C.GRAY}Your team is already healthy.{C.RESET}")
+                press_enter(); continue
+
+            # Walk
+            steps_in_area += 1
+            roll = random.random()
+
+            # ── Hidden item (8% chance) ──
+            if roll < 0.08:
+                treasure_pool = ["Potion", "Super Potion", "Capture Ball",
+                                 "Antidote", "Elixir"]
+                found = random.choice(treasure_pool)
+                self.inventory[found] = self.inventory.get(found, 0) + 1
+                slow_print(f"\n  {C.YELLOW}✦  You found a hidden {found}!{C.RESET}")
+                # Berry chance
+                if random.random() < 0.3:
+                    berry = random.choice(["Lum Berry", "Sitrus Berry", "Oran Berry"])
+                    self.inventory[berry] = self.inventory.get(berry, 0) + 1
+                    slow_print(f"  {C.GREEN}...and a {berry}!{C.RESET}")
+                press_enter(); continue
+
+            # ── Trainer (18%) ──
+            elif roll < 0.26 and trainer_pool:
+                # Build a trainer team of 1-3 creatures
+                team_size = random.choices([1, 2, 3], weights=[40, 40, 20])[0]
+                trainer_team = [random.choice(trainer_pool) for _ in range(team_size)]
+                cname, lv = trainer_team[0]
+                t_name = random.choice(["Youngster", "Lass", "Hiker",
+                                        "Sailor", "Ranger", "Ace Trainer"])
+                clear()
+                banner(f"  TRAINER BATTLE  ", C.YELLOW)
+                slow_print(f"\n  {C.BOLD}{t_name}{C.RESET} steps out from the tall grass!")
+                slow_print(f"  {C.YELLOW}{t_name}{C.RESET}: \"Hey! You there! Let's battle!\"")
+                team_preview = ", ".join(f"{n} Lv.{l}" for n, l in trainer_team)
+                slow_print(f"  {C.GRAY}{t_name} has: {team_preview}{C.RESET}")
+                press_enter()
+                player_c = self._pick_lead(player_c)
+                if player_c is None: break
+                prize_money = 0
+                lost = False
+                for cname, lv in trainer_team:
+                    enemy = Creature(cname, lv, is_player=False)
+                    result, obj = run_battle(player_c, enemy, self.inventory,
+                                             self.team, wild=False,
+                                             trainer_name=t_name, weather=weather)
+                    if result == "win":
+                        self.steps += 1
+                        self.award_exp(player_c, enemy)
+                        prize_money += lv * 40
+                        alive_after = [c for c in self.team if c.is_alive()]
+                        if alive_after and not player_c.is_alive():
+                            player_c = alive_after[0]
+                        clear()
+                    elif result == "lose":
+                        lost = True
+                        break
+                if lost:
+                    slow_print(f"  {C.RED}You lost! Retreating...{C.RESET}")
+                    press_enter()
+                    clear()
+                    break
+                else:
+                    self.earn_money(prize_money)
+                    slow_print(f"  {C.YELLOW}{t_name}: \"Good battle!\"  {C.RESET}")
+                    press_enter()
+                    clear()
+
+            # ── Wild (50%) ──
+            elif roll < 0.76:
+                # At night, ghost-types have higher weight
+                if night_bonus_areas() and random.random() < 0.35:
+                    ghost_pool = [("Ghostlet", 5, 30), ("Spectrex", 20, 45)]
+                    night_pool = [p for p in ghost_pool
+                                  if p[0] in [w[0] for w in WILD_AREAS.get(area_name, [])]]
+                    wild_pool_override = night_pool if night_pool else None
+                else:
+                    wild_pool_override = None
+
+                if wild_pool_override:
+                    name, lo, hi = random.choice(wild_pool_override)
+                    lv = random.randint(lo, hi)
+                    wild = Creature(name, lv, is_player=False)
+                else:
+                    wild = random_wild(area_name)
+
+                if wild:
+                    slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
+                               f"{C.YELLOW} appeared! (Lv.{wild.level}){C.RESET}")
+                    press_enter()
+                    player_c = self._pick_lead(player_c)
+                    if player_c is None: break
+
+                    result, obj = run_battle(player_c, wild, self.inventory,
+                                             self.team, wild=True, weather=weather)
+                    if result == "win":
+                        self.steps += 1
+                        self.award_exp(player_c, wild)
+                        self.earn_money(max(wild.level * 15, 100))
+                        alive_after = [c for c in self.team if c.is_alive()]
+                        if alive_after and not player_c.is_alive():
+                            player_c = alive_after[0]
+                        clear()
+                    elif result == "caught":
+                        self.steps += 1
+                        captured = obj
+                        # If the captured wild was holding an item, give it to the player
+                        if captured.held_item:
+                            stolen = captured.held_item
+                            self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
+                            captured.held_item = None
+                            slow_print(f"  {C.YELLOW}★  {captured.name} was holding {stolen}! You got it!{C.RESET}")
+                        if len(self.team) < 6:
+                            self.team.append(captured)
+                            slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
+                        else:
+                            slow_print(f"  {C.YELLOW}Team full (max 6)! "
+                                       f"{captured.name} was released.{C.RESET}")
+                        press_enter()
+                    elif result == "lose":
+                        slow_print(f"  {C.RED}Your creatures fainted! Retreating...{C.RESET}")
+                        press_enter(); break
+
+            else:
+                msgs = [
+                    "Nothing but rustling leaves...",
+                    "The wind howls through the area.",
+                    "Footprints in the dirt — but nothing nearby.",
+                    "A cool breeze passes by.",
+                    "You find a berry bush but nothing useful.",
+                    "Strange sounds echo in the distance...",
+                ]
+                slow_print(f"  {C.GRAY}{random.choice(msgs)}{C.RESET}")
+                press_enter()
+
+    # ── ELITE FOUR ─────────────────────────────
+    def challenge_elite_four(self):
+        missing = [b for b in REQUIRED_BADGES if b not in self.badges]
+        if missing:
+            slow_print(f"  {C.RED}You need ALL {len(REQUIRED_BADGES)} badges!{C.RESET}")
+            slow_print(f"  {C.YELLOW}Missing: {', '.join(missing)}{C.RESET}")
+            press_enter(); return
+
+        banner("  ★  THE ELITE FOUR  ★  ", C.MAGENTA)
+        slow_print("""
+  Four masters stand between you and the championship.
+  No Inn between rounds. Only your team will carry you through.
+""", 0.02)
+        if not confirm("  Are you ready?"):
+            return
+
+        player_c = self._pick_lead()
+        if player_c is None: return
+
+        for i, challenger in enumerate(ELITE_FOUR):
+            clear()
+            is_champ = (i == len(ELITE_FOUR) - 1)
+            color    = C.YELLOW if is_champ else C.RED
+            title    = "★  CHAMPION  ★" if is_champ else challenger["name"].upper()
+            banner(f"  {title}  ", color)
+            slow_print(f"  {C.BOLD}{challenger['name']}{C.RESET} — {challenger['title']}")
+            slow_print(f"  «Your journey ends here, {self.player_name}!»")
+            press_enter()
+
+            for cname, lv in challenger["team"]:
+                enemy  = Creature(cname, lv, is_player=False)
+                result, obj = run_battle(player_c, enemy, self.inventory,
+                                         self.team, wild=False,
+                                         trainer_name=challenger["name"])
+                if result == "win":
+                    self.steps += 1
+                    self.award_exp(player_c, enemy)
+                    alive = [c for c in self.team if c.is_alive()]
+                    if alive and not player_c.is_alive():
+                        player_c = alive[0]
+                elif result == "lose":
+                    slow_print(f"\n  {C.RED}Defeated by {challenger['name']}...{C.RESET}")
+                    slow_print("  Heal up and try again!")
+                    press_enter(); return
+
+            slow_print(f"\n  {C.GREEN}★  {challenger['name']} defeated!{C.RESET}")
+            press_enter()
+
+        # CHAMPION!
+        clear()
+        banner("  ★ ★ ★  CHAMPION!  ★ ★ ★", C.YELLOW)
+        name_centered = self.player_name.upper().center(44)
+        slow_print(f"""
+  ╔══════════════════════════════════════════════╗
+  ║                                              ║
+  ║   {name_centered} ║
+  ║         IS THE NEW CREATURE CHAMPION!        ║
+  ║                                              ║
+  ╚══════════════════════════════════════════════╝
+""", 0.015)
+        slow_print(f"  Battles fought: {C.YELLOW}{self.steps}{C.RESET}")
+        slow_print(f"  Final team:")
+        team_summary(self.team)
+        self.save()
+        press_enter()
+        # Final rival battle fires here
+        trigger_post_elite_rival(self)
+
+    # ── TOWN LOOP ──────────────────────────────
+    def town_loop(self):
+        while True:
+            town_data = TOWNS[self.town]
+            clear()
+            banner(f"  {self.town}  ")
+            slow_print(f"  {C.GRAY}{town_data['desc']}{C.RESET}", 0.01)
+
+            # Day/Night display
+            tod, tod_color, tod_icon = time_of_day()
+            alive_count = sum(1 for c in self.team if c.is_alive())
+            print(f"\n  {C.YELLOW}₽{self.money}{C.RESET}  │  "
+                  f"Badges {C.YELLOW}{len(self.badges)}{C.RESET}/{len(REQUIRED_BADGES)}  │  "
+                  f"Team {C.GREEN}{alive_count}{C.RESET}/{len(self.team)} alive  │  "
+                  f"{tod_color}{tod_icon} {tod}{C.RESET}\n")
+
+            opts = []
+            if town_data.get("shop"):
+                opts.append("🛒  Shop")
+            if town_data.get("inn"):
+                opts.append(f"🏨  Inn  (₽{town_data['inn']} — full heal)")
+            if town_data.get("gym"):
+                badge = town_data["gym"]["badge"]
+                tag   = f" {C.GREEN}[✓]{C.RESET}" if badge in self.badges else ""
+                opts.append(f"⚔  Gym — {town_data['gym']['leader']}{tag}")
+            if town_data.get("wild_area"):
+                opts.append(f"🌿  Explore {town_data['wild_area']}")
+            if self.town == "Champion Road":
+                opts.append("🏆  Challenge Elite Four")
+            # Show rival battle option if one is pending in this town
+            from engine.rival import RIVAL_ENCOUNTERS
+            pending_enc = self.rival.next_encounter(len(self.badges))
+            if pending_enc and pending_enc["trigger_town"] == self.town:
+                opts.append(f"⚡  Rival Battle ({self.rival.name})")
+            if self.town in MOVE_TUTORS:
+                opts.append("🎓  Move Tutor")
+
+            opts += [f"🗺  Travel to {c}" for c in town_data["connections"]]
+            opts += [
+                "🎒  Bag",
+                "👥  Creatures",
+                "🏅  Badges",
+                "📊  Trainer Card",
+                "🗺  World Map",
+                "💾  Save Game",
+                "❌  Quit",
+            ]
+
+            choice = menu("What do you do?", opts)
+            label  = opts[choice].split("  ", 1)[-1].strip()
+
+            if label == "Shop":
+                self.visit_shop(town_data["shop"], len(self.badges))
+            elif label.startswith("Inn"):
+                self.visit_inn(town_data["inn"])
+            elif label.startswith("Gym"):
+                self.challenge_gym(town_data["gym"])
+            elif label.startswith("Explore"):
+                self.explore(town_data["wild_area"])
+            elif label == "Challenge Elite Four":
+                self.challenge_elite_four()
+            elif label.startswith("Rival Battle"):
+                from engine.rival import RIVAL_ENCOUNTERS, run_rival_encounter
+                pending_enc = self.rival.next_encounter(len(self.badges))
+                if pending_enc:
+                    run_rival_encounter(self, pending_enc)
+            elif label == "Move Tutor":
+                self.visit_move_tutor(self.town)
+            elif label.startswith("Travel to"):
+                dest = label.replace("Travel to ", "")
+                slow_print(f"  {C.CYAN}You travel to {dest}...{C.RESET}", 0.02)
+                time.sleep(0.3)
+                self.town = dest
+                press_enter()
+                # Auto-trigger rival if they're waiting in this town
+                trigger_rival_if_due(self)
+            elif label == "Bag":
+                self.open_bag()
+            elif label == "Creatures":
+                self.open_creatures()
+            elif label == "Badges":
+                self.open_badges()
+            elif label == "Trainer Card":
+                self.open_stats()
+            elif label == "World Map":
+                show_world_map(self.town, self.badges)
+            elif label == "Save Game":
+                self.save(); press_enter()
+            elif label == "Quit":
+                if confirm("  Save before quitting?"):
+                    self.save()
+                slow_print("  Goodbye, trainer!"); sys.exit(0)
+
+
+# ═══════════════════════════════════════════════
+#  NEW GAME
+# ═══════════════════════════════════════════════
+def new_game(g):
+    clear()
+    banner("  CREATURES  —  A NEW ADVENTURE  ", C.CYAN)
+    slow_print("""
+  Welcome to the world of CREATURES!
+
+  Wild creatures roam every corner of this land.
+  Catch them, train them, and battle your way to the top!
+
+  Tips:
+    ✦  Visit the INN in towns to heal your full team
+    ✦  Switch creatures mid-battle from the menu
+    ✦  All alive teammates share EXP after battle
+    ✦  Catch creatures to build a strong team (max 6)
+    ✦  You need all 7 Gym Badges to enter the Elite Four
+    ✦  Give Berries (from Bag → Held Items) for passive bonuses
+    ✦  Visit Move Tutors in towns to learn powerful moves
+    ✦  Search thoroughly — some areas hide free items!
+""", 0.012)
+    press_enter()
+
+    name = ""
+    while not name:
+        name = input(f"  {C.CYAN}Enter your trainer name:{C.RESET} ").strip()
+    g.player_name = name
+
+    # ── Rival name ──
+    print()
+    rival_name = input(f"  {C.YELLOW}Enter your rival's name (default: Gary):{C.RESET} ").strip()
+    g.rival.name = rival_name if rival_name else "Gary"
+
+    clear()
+    section("CHOOSE YOUR STARTER")
+    slow_print("  Four creatures await their trainer...\n")
+    starters = ["Flambit", "Leafling", "Aquapup", "Drakling"]
+    for s in starters:
+        d = CREATURES[s]
+        t = "/".join(d["type"])
+        print(f"  {C.BOLD}{s:<12}{C.RESET} [{C.CYAN}{t:<15}{C.RESET}]  "
+              f"{C.GRAY}{d['desc']}{C.RESET}")
+    print()
+    opts = [f"{s}  [{'/'.join(CREATURES[s]['type'])}]" for s in starters]
+    idx  = menu("Your starter:", opts)
+    starter_name = starters[idx]
+    starter = Creature(starter_name, 5)
+    g.team.append(starter)
+    slow_print(f"\n  {C.GREEN}★  You chose {C.BOLD}{starter_name}{C.RESET}{C.GREEN}!{C.RESET}")
+    slow_print(f"  {C.GRAY}Professor Birch: «Take good care of it, {g.player_name}!»{C.RESET}")
+
+    # ── Rival picks counter-starter ──
+    g.rival.starter = COUNTER_STARTER.get(starter_name, "Flambit")
+    slow_print(f"\n  {C.CYAN}{g.rival.name} chose {C.BOLD}{g.rival.starter}{C.RESET}"
+               f"{C.CYAN} — your rival has entered the adventure!{C.RESET}")
+    press_enter()
+
+
+# ═══════════════════════════════════════════════
+#  ENTRY POINT
+# ═══════════════════════════════════════════════
+def main():
+    clear()
+    banner("  ✦  CREATURES  ✦  ", C.MAGENTA)
+    print(f"""
+{C.CYAN}     ██████╗██████╗ ███████╗ █████╗ ████████╗██╗   ██╗██████╗ ███████╗
+    ██╔════╝██╔══██╗██╔════╝██╔══██╗╚══██╔══╝██║   ██║██╔══██╗██╔════╝
+    ██║     ██████╔╝█████╗  ███████║   ██║   ██║   ██║██████╔╝█████╗
+    ██║     ██╔══██╗██╔══╝  ██╔══██║   ██║   ██║   ██║██╔══██╗██╔══╝
+    ╚██████╗██║  ██║███████╗██║  ██║   ██║   ╚██████╔╝██║  ██║███████╗
+     ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝{C.RESET}
+    """)
+
+    g     = Game()
+    slots = list_save_slots()
+
+    opts = ["New Game"]
+    if slots:
+        for slot_num, summary in slots:
+            opts.insert(0, f"Continue Slot {slot_num}  ({summary})")
+    opts.append("Quit")
+    choice = menu("", opts)
+
+    if opts[choice] == "Quit":
+        sys.exit(0)
+    elif opts[choice] == "New Game":
+        # Pick save slot
+        if slots:
+            slot_opts = [f"Slot {s}  ({summary})" for s, summary in slots]
+            slot_opts += [f"Slot {s}  (empty)" for s in range(1, 4)
+                          if s not in [x[0] for x in slots]]
+            slot_opts.append("← Cancel")
+            si = menu("Save to which slot?", slot_opts)
+            if si == len(slot_opts) - 1:
+                main(); return
+            # Parse slot number
+            raw = slot_opts[si]
+            g.save_slot = int(raw.split()[1])
+        new_game(g)
+    else:
+        # Continue — find slot number from label
+        label = opts[choice]
+        slot_num = int(label.split()[2])
+        saved = load_game(slot=slot_num)
+        if not saved:
+            slow_print(f"  {C.RED}Save file not found!{C.RESET}")
+            press_enter(); main(); return
+        g.save_slot   = slot_num
+        g.player_name = saved["player_name"]
+        g.town        = saved["town"]
+        g.team        = saved["team"]
+        g.inventory   = {k: 0 for k in ITEMS}
+        for k, v in saved["inventory"].items():
+            if k in g.inventory:
+                g.inventory[k] = v
+        g.badges      = saved["badges"]
+        g.money       = saved["money"]
+        g.steps       = saved.get("steps", 0)
+        # Load rival state
+        from engine.rival import RivalState
+        rival_data = saved.get("rival")
+        if rival_data:
+            g.rival = RivalState.from_dict(rival_data)
+        slow_print(f"  {C.GREEN}Welcome back, {C.BOLD}{g.player_name}{C.RESET}{C.GREEN}!{C.RESET}")
+        press_enter()
+
+    g.town_loop()
+
+
+if __name__ == "__main__":
+    main()
