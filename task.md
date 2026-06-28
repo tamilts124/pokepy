@@ -1130,15 +1130,28 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     earned. Players would be able to see their progression across the whole map at a glance
     rather than needing to open the Badges screen separately.
 
-- [ ] **Trainer Card: win/loss stats per trainer type** — status: in-progress
+- [x] **Trainer Card: win/loss stats per trainer type** — status: done
+  - notes: Added `gym_wins`, `gym_losses`, `e4_attempts`, `e4_clears` counters to `Game`,
+    wired through `save()`/`load_game()` round-trip in both `main.py` and
+    `engine/core.py` (with `setdefault` fallback to 0 for old saves missing the keys).
+    `challenge_gym()` increments `gym_wins` on badge win, `gym_losses` on defeat.
+    `challenge_elite_four()` increments `e4_attempts` once the player confirms a
+    non-rematch run, and `e4_clears` when the Champion is fully defeated (rematches
+    excluded from both, consistent with how `is_champion` already tracks first-clear
+    only). `open_stats()` (Trainer Card) now shows a `Gym Rec: XW-YL` line (only when
+    nonzero) and an `Elite 4: X cleared / Y attempted` line (only when attempted >= 1).
+  - Verified: new 6-assertion test script (`_test_gym_e4_stats.py`) covers init defaults,
+    save/load round-trip, old-save migration, and source-level checks for both increment
+    call sites and the Trainer Card display. Full 19-script regression suite (18 existing +
+    this one) passes; `main.py` and `engine/core.py` both compile clean.
+  - Picked up from a previous session that had left this `in-progress`: `main.py` already
+    had the `Game.__init__` counters and `challenge_gym`/load-slot wiring done, but
+    `engine/core.py`'s `save_game()`/`load_game()` functions were never updated to accept
+    or persist the new kwargs — calling `Game.save()` would have raised a `TypeError`.
+    Fixed `core.py` first, then finished the two missing call sites
+    (`challenge_elite_four` attempts/clears) and the Trainer Card display lines.
 
-  - notes: The Trainer Card already shows total battles and rival score. Add a breakdown row
-    for Gym Leaders (X won, Y lost) and Elite Four (X attempted, Y completed) separately from
-    the general battle count. Requires tracking `gym_wins`, `gym_losses`, `e4_clears` counters
-    on `Game`, persisting them through save/load, and incrementing them at the relevant call
-    sites (already know from code that `challenge_gym()` and `challenge_elite_four()` are the
-    two sites).
-
+- [ ] **Explorer flavor events: random discoveries while walking** — status: todo
 - [ ] **Explorer flavor events: random discoveries while walking** — status: todo
   - notes: Add a small pool of rare (1-2%) flavor events to `explore()` beyond the existing
     hidden-item finds. Examples: a trainer's lost item you can return for a reward (adds

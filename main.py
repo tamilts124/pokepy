@@ -287,6 +287,10 @@ class Game:
         self.visited_towns = set()       # towns the player has entered at least once
         self.nuzlocke    = False         # if True, fainted creatures are permanently deleted
         self.difficulty  = "Normal"      # "Easy", "Normal", or "Hard"
+        self.gym_wins    = 0             # gym leader battles won
+        self.gym_losses  = 0             # gym leader battles lost
+        self.e4_attempts = 0             # Elite Four runs attempted
+        self.e4_clears   = 0             # Elite Four runs fully completed
 
 
 
@@ -691,7 +695,11 @@ class Game:
                   defeated_trainers=getattr(self, '_defeated_trainers', set()),
                   item_drought=getattr(self, 'item_drought', 0),
                   last_played_date=today,
-                  difficulty=getattr(self, 'difficulty', 'Normal'))
+                                    difficulty=getattr(self, 'difficulty', 'Normal'),
+                  gym_wins=getattr(self, 'gym_wins', 0),
+                  gym_losses=getattr(self, 'gym_losses', 0),
+                  e4_attempts=getattr(self, 'e4_attempts', 0),
+                  e4_clears=getattr(self, 'e4_clears', 0))
 
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
@@ -1462,6 +1470,14 @@ class Game:
         slow_print(f"  Diffclt : {_diff_color}{_diff}{C.RESET}")
         slow_print(f"  Money   : {C.YELLOW}₽{self.money}{C.RESET}")
         slow_print(f"  Badges  : {len(self.badges)}/{len(REQUIRED_BADGES)}")
+        _gw = getattr(self, 'gym_wins', 0)
+        _gl = getattr(self, 'gym_losses', 0)
+        _e4a = getattr(self, 'e4_attempts', 0)
+        _e4c = getattr(self, 'e4_clears', 0)
+        if _gw or _gl:
+            slow_print(f"  Gym Rec : {C.GREEN}{_gw}W{C.RESET}-{C.RED}{_gl}L{C.RESET}")
+        if _e4a:
+            slow_print(f"  Elite 4 : {C.YELLOW}{_e4c}{C.RESET} cleared / {_e4a} attempted")
         slow_print(f"  Battles : {self.steps}")
         _ps = getattr(self, 'play_seconds', 0)
         _ph, _pm = _ps // 3600, (_ps % 3600) // 60
@@ -1900,6 +1916,7 @@ class Game:
                     if player_c is None: return
 
             elif result == "lose":
+                self.gym_losses = getattr(self, 'gym_losses', 0) + 1
                 self.apply_loss_penalty()
                 slow_print(f"\n  {C.RED}You were defeated! Visit an Inn to recover.{C.RESET}")
                 press_enter(); return
@@ -1909,6 +1926,7 @@ class Game:
 
                    f"{C.YELLOW}{badge}{C.RESET}!»")
         self.badges.append(badge)
+        self.gym_wins = getattr(self, 'gym_wins', 0) + 1
         print('\a', end='', flush=True)
         self._check_achievement("first_badge")
         if len(self.badges) == len(REQUIRED_BADGES):
@@ -2241,6 +2259,9 @@ class Game:
         if not confirm("  Are you ready?"):
             return
 
+        if not rematch:
+            self.e4_attempts = getattr(self, 'e4_attempts', 0) + 1
+
         player_c = self._pick_lead()
         if player_c is None: return
 
@@ -2304,6 +2325,7 @@ class Game:
         if not rematch:
             self._check_achievement("champion")
             self.is_champion = True
+        self.e4_clears = getattr(self, 'e4_clears', 0) + 1
         self.save()
         press_enter()
         # Final rival battle fires here
@@ -2912,6 +2934,10 @@ def main():
         g.item_drought = saved.get("item_drought", 0)
         g._defeated_trainers = set(saved.get("defeated_trainers", []))
         g.last_played_date = saved.get("last_played_date", "")
+        g.gym_wins    = saved.get("gym_wins", 0)
+        g.gym_losses  = saved.get("gym_losses", 0)
+        g.e4_attempts = saved.get("e4_attempts", 0)
+        g.e4_clears   = saved.get("e4_clears", 0)
 
         # Load rival state
         from engine.rival import RivalState

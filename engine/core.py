@@ -452,7 +452,7 @@ def save_file_path(slot=1):
 
 SAVE_VERSION = 2
 
-def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, shiny_caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None, item_drought=0, last_played_date=None, difficulty="Normal"):
+def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, shiny_caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None, item_drought=0, last_played_date=None, difficulty="Normal", gym_wins=0, gym_losses=0, e4_attempts=0, e4_clears=0):
     data = {
         "version":     SAVE_VERSION,
         "player_name": player_name,
@@ -479,6 +479,10 @@ def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1
         "avatar":      avatar or "♂",
         "visited_towns": sorted(visited_towns or []),
         "last_played_date": last_played_date or "",
+        "gym_wins":    gym_wins,
+        "gym_losses":  gym_losses,
+        "e4_attempts": e4_attempts,
+        "e4_clears":   e4_clears,
     }
     with open(save_file_path(slot), "w") as f:
         json.dump(data, f, indent=2)
@@ -511,6 +515,10 @@ def load_game(slot=1):
     data.setdefault("item_drought", 0)
     data.setdefault("defeated_trainers", [])
     data.setdefault("last_played_date", "")
+    data.setdefault("gym_wins", 0)
+    data.setdefault("gym_losses", 0)
+    data.setdefault("e4_attempts", 0)
+    data.setdefault("e4_clears", 0)
     data["team"] = [Creature.from_dict(d) for d in data["team"]]
     return data
 
