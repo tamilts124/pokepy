@@ -395,7 +395,7 @@ def save_file_path(slot=1):
 
 SAVE_VERSION = 2
 
-def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None):
+def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None, item_drought=0):
     data = {
         "version":     SAVE_VERSION,
         "player_name": player_name,
@@ -408,6 +408,7 @@ def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1
         "play_seconds": play_seconds,
         "nuzlocke":    bool(nuzlocke),
         "repel_steps": repel_steps,
+        "item_drought": item_drought,
         "defeated_trainers": sorted(defeated_trainers or []),
         "rival":       rival.to_dict() if rival is not None else None,
         "achievements": achievements or [],
@@ -443,6 +444,7 @@ def load_game(slot=1):
     data.setdefault("play_seconds", 0)
     data.setdefault("nuzlocke", False)
     data.setdefault("repel_steps", 0)
+    data.setdefault("item_drought", 0)
     data.setdefault("defeated_trainers", [])
     data["team"] = [Creature.from_dict(d) for d in data["team"]]
     return data
@@ -470,6 +472,24 @@ def list_save_slots():
 # ─────────────────────────────────────────────
 #  WILD ENCOUNTER HELPER
 # ─────────────────────────────────────────────
+PITY_THRESHOLD = 8   # dry encounters before boost kicks in
+PITY_MULT_PER_TIER = 0.5  # +50% effective chance per tier beyond threshold
+
+def roll_held_item(name, pity_boost=1.0):
+    """Roll a held item for a wild creature of the given species.
+
+    pity_boost > 1.0 increases each item's raw chance multiplicatively — purely
+    a luck-smoothing measure after many consecutive item-less encounters.
+    The pool is still iterated in order; the first hit wins.
+    Returns an item name, or None if nothing hits.
+    """
+    pool_data = CREATURES[name].get("held_item_pool", [])
+    for item_name, chance in pool_data:
+        if random.random() < min(1.0, chance * pity_boost):
+            return item_name
+    return None
+
+
 def random_wild(area_name, badge_bonus=0):
     pool = WILD_AREAS.get(area_name, [])
     if not pool:
@@ -478,11 +498,7 @@ def random_wild(area_name, badge_bonus=0):
     level = random.randint(lo + badge_bonus, hi + badge_bonus)
     wild = Creature(name, level, is_player=False)
     # Roll for a held item from this creature's pool
-    pool_data = CREATURES[name].get("held_item_pool", [])
-    for item_name, chance in pool_data:
-        if random.random() < chance:
-            wild.held_item = item_name
-            break
+    wild.held_item = roll_held_item(name)
     return wild
 
 

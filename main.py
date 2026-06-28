@@ -15,7 +15,8 @@ try:
 except Exception:
     pass
 
-from engine.core    import (Creature, save_game, load_game, list_save_slots, random_wild)
+from engine.core    import (Creature, save_game, load_game, list_save_slots, random_wild,
+                             roll_held_item, PITY_THRESHOLD, PITY_MULT_PER_TIER)
 from data.creatures import (CREATURES, ITEMS, TOWNS, WILD_AREAS,
                              ELITE_FOUR, REQUIRED_BADGES, RANDOM_TRAINERS,
                              FISH_OLD_ROD, FISH_GOOD_ROD, GROTTOS,
@@ -153,6 +154,7 @@ class Game:
         self.achievements = []           # list of earned achievement keys
         self.season      = current_season()
         self.repel_steps = 0             # remaining wild-encounter charges from a Repel item
+        self.item_drought = 0            # consecutive wild encounters without a held-item drop
         self._defeated_trainers = set()  # track rematched trainers by (area, name_hash)
         self.seen        = set()         # creature names encountered in the wild
         self.caught      = set()         # creature names successfully captured
@@ -358,8 +360,27 @@ class Game:
             press_enter()
             sys.exit(0)
 
+    def _roll_held_item_with_pity(self, creature_name):
+        """Roll a held item for a wild creature, applying a pity boost when the
+        player has gone PITY_THRESHOLD or more encounters without a drop, then
+        update the drought counter.  This is purely luck-smoothing — it does not
+        guarantee a drop, just nudges the probability upward."""
+        drought = getattr(self, 'item_drought', 0)
+        if drought >= PITY_THRESHOLD:
+            # Each full extra threshold crossed adds another 50% boost tier
+            tiers = (drought - PITY_THRESHOLD) // PITY_THRESHOLD + 1
+            boost = 1.0 + tiers * PITY_MULT_PER_TIER
+        else:
+            boost = 1.0
+        result = roll_held_item(creature_name, pity_boost=boost)
+        if result:
+            self.item_drought = 0   # streak broken — reset
+        else:
+            self.item_drought = drought + 1
+        return result
+
     def award_exp(self, winner, loser):
-        from data.creatures import MOVES as MOVE_DATA
+
         base = loser.level * 5
         exp  = int(base * (1 + random.uniform(-0.1, 0.1)))
 
@@ -489,7 +510,9 @@ class Game:
                   play_seconds=self.play_seconds,
                   nuzlocke=getattr(self, 'nuzlocke', False),
                   repel_steps=getattr(self, 'repel_steps', 0),
-                  defeated_trainers=getattr(self, '_defeated_trainers', set()))
+                  defeated_trainers=getattr(self, '_defeated_trainers', set()),
+                  item_drought=getattr(self, 'item_drought', 0))
+
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
 
@@ -1583,15 +1606,22 @@ class Game:
                         name, lo, hi = random.choice(wild_pool_override)
                         lv = random.randint(lo + badge_bonus, hi + badge_bonus)
                         wild = Creature(name, lv, is_player=False)
+                        wild.held_item = self._roll_held_item_with_pity(name)
                     elif seasonal_extras and random.random() < 0.30:
                         # 30% chance to pull from the seasonal bonus pool
                         name, lo, hi = random.choice(seasonal_extras)
                         lv = random.randint(lo + badge_bonus, hi + badge_bonus)
                         wild = Creature(name, lv, is_player=False)
+                        wild.held_item = self._roll_held_item_with_pity(name)
                         slow_print(f"  {SEASON_COLORS.get(self.season, C.GREEN)}"
                                    f"✦ A {self.season} visitor!{C.RESET}")
                     else:
+
                         wild = random_wild(area_name, badge_bonus=badge_bonus)
+                        if wild:
+                            # Override held item with pity-aware roll
+                            wild.held_item = self._roll_held_item_with_pity(wild.name)
+
 
 
                     if wild:
@@ -1804,6 +1834,8 @@ class Game:
                 name, lo, hi = random.choice(fish_pool)
                 lv = random.randint(lo + badge_bonus, hi + badge_bonus)
                 wild = Creature(name, lv, is_player=False)
+                wild.held_item = self._roll_held_item_with_pity(name)
+
                 slow_print(f"  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
                            f"{C.YELLOW} took the hook! (Lv.{wild.level}){C.RESET}")
                 press_enter()
@@ -1912,6 +1944,8 @@ class Game:
             name, lo, hi = random.choice(creature_pool)
             lv = random.randint(lo + badge_bonus, hi + badge_bonus)
             wild = Creature(name, lv, is_player=False)
+            wild.held_item = self._roll_held_item_with_pity(name)
+
             slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
                        f"{C.YELLOW} leaps from the shadows! (Lv.{wild.level}){C.RESET}")
             press_enter()
@@ -2244,16 +2278,16 @@ def main():
         g.visited_towns = set(saved.get("visited_towns", []))
         g.nuzlocke    = saved.get("nuzlocke", False)
         g.repel_steps = saved.get("repel_steps", 0)
+        g.item_drought = saved.get("item_drought", 0)
         g._defeated_trainers = set(saved.get("defeated_trainers", []))
         # Load rival state
         from engine.rival import RivalState
-        rival_data = saved.get("rival")
-
         rival_data = saved.get("rival")
         if rival_data:
             g.rival = RivalState.from_dict(rival_data)
         slow_print(f"  {C.GREEN}Welcome back, {C.BOLD}{g.player_name}{C.RESET}{C.GREEN}!{C.RESET}")
         press_enter()
+
 
     g.town_loop()
 

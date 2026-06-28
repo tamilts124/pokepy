@@ -274,7 +274,60 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 - [ ] **Held item pity timer for long catch droughts** — status: todo
   - Wild creatures roll their held item independently per encounter via `held_item_pool`
     (typically 5-20% chance). A player with bad luck can go many encounters in a row without
-    ever seeing a held item drop, which doesn't feel great. Consider a small "pity" counter
-    on `Game` that nudges the roll upward after N consecutive item-less wild encounters, reset
-    on any drop — purely a luck-smoothing QoL change, not a new mechanic. Needs a decision on
-    whether this is worth the added state vs. just leaving drop rates as pure-random.
+
+## Session 4 — Resume from mid-task cutoff (2026-06)
+
+- [x] **Held item pity timer for long catch droughts** — status: done
+  - Previous session had begun this feature but left it half-finished with several critical bugs:
+    1. Duplicate `else:` clause in `explore()` causing a `SyntaxError` (game wouldn't start).
+    2. Grotto encounters (`explore_grotto()`) still using raw `roll_held_item(name)` — bypassing
+       the pity counter entirely.
+    3. `save()` was not passing `item_drought` to `save_game()` — counter lost on save.
+    4. The continue-slot load path in `main()` wasn't restoring `g.item_drought`.
+    5. Duplicate `rival_data = saved.get("rival")` line in the load path (cosmetic but cleaned up).
+  - Previous session had also correctly: extracted `roll_held_item()` as a shared helper,
+    added `pity_boost` param (with `min(1.0, chance * boost)` cap), added `PITY_THRESHOLD=8`
+    and `PITY_MULT_PER_TIER=0.5` constants, and applied `_roll_held_item_with_pity()` to
+    seasonal/override/fishing encounter paths, and added `item_drought` to `save_game`/
+    `load_game` signatures in `engine/core.py`. All of that was sound and was kept.
+  - Fixes applied this session: removed the duplicate `else:`, fixed grotto to use
+    `self._roll_held_item_with_pity(name)`, wired `item_drought=` into `Game.save()`,
+    added `g.item_drought = saved.get("item_drought", 0)` to the continue-load path,
+    removed the duplicate `rival_data` line.
+  - Design summary: `item_drought` tracks consecutive wild encounters without a held-item drop.
+    At 8+ dry encounters (`PITY_THRESHOLD`), each further 8-encounter tier adds +50% boost to
+    every item's effective drop chance (e.g. 10 dry → 1.5× boost; 18 dry → 2.0×; capped at
+    1.0 per pool entry). The first successful drop resets drought to 0. Applies to regular
+    wild, seasonal, night-bonus-override, fishing, and grotto encounters — all five paths now
+    go through `_roll_held_item_with_pity()`. Invisible to the player; purely luck-smoothing.
+  - Verified: `py_compile` clean on all files. A 3-part test script confirmed:
+    (1) `pity_boost=100.0` caps at 1.0 and guarantees a drop when `random()=0.5`;
+    (2) drought increments correctly through 10 dry rolls, boost kicks in at threshold (1.50×),
+        and resets to 0 on the first drop; (3) `item_drought=13` survives a save/load cycle.
+
+## New tasks — todo
+
+- [ ] **Trainer Card: show Pokédex progress** — status: todo
+  - The Trainer Card currently shows money, badges, battles, playtime, and rival score, but
+    not how many creatures the player has seen/caught. Add a line like
+    "Pokédex: X seen / Y caught (Z total)" so players can track completion at a glance without
+    opening the full Pokédex screen.
+
+- [ ] **Battle: switch prompt when lead faints mid-battle** — status: todo
+  - When the player's lead faints in a trainer/gym/Elite Four battle, the game calls
+    `_pick_lead()` which shows a full team menu. But there's no dramatic prompt or context —
+    it drops straight into a plain list. Add a "Your <name> fainted! Choose next creature:"
+    header with the fallen creature's name for clarity and emotional weight.
+
+- [ ] **Town: NPC dialogue system** — status: todo
+  - Towns have no ambient NPCs — visiting any town is purely mechanical (shop/inn/gym).
+    Add a small pool of 2–4 dialogue lines per town (residents, gossip, hints), surfaced via
+    a "💬 Talk to locals" option in the town menu. Dialogue can be static strings initially,
+    with one or two lines that react to badge count or champion status for progression feel.
+
+- [ ] **Explore: hidden grottos discoverable through exploration** — status: todo
+  - Currently grottos are a fixed menu option in towns that have one. Make them also
+    discoverable during the wild-area explore loop: small random chance (e.g. 3%) of stumbling
+    upon the grotto entrance while walking, with a distinct flavor line ("You notice a crack
+    in the cliff face…"). If the town has no grotto, no roll. This makes exploration feel
+    more rewarding and less like a static checklist.
