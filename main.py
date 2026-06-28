@@ -1293,7 +1293,211 @@ class Game:
         # Final rival battle fires here
         trigger_post_elite_rival(self)
 
+    # ── GO FISHING ─────────────────────────────
+    def go_fishing(self):
+        """Fish for water creatures in the current town using Old Rod or Good Rod."""
+        has_old = self.inventory.get("Old Rod", 0) > 0
+        has_good = self.inventory.get("Good Rod", 0) > 0
+        if not has_old and not has_good:
+            slow_print(f"  {C.YELLOW}You don't have a fishing rod! Buy one at a shop.{C.RESET}")
+            press_enter(); return
+
+        # Check if there are fish in this town
+        old_pool  = FISH_OLD_ROD.get(self.town, [])
+        good_pool = FISH_GOOD_ROD.get(self.town, [])
+        if not old_pool and not good_pool:
+            slow_print(f"  {C.GRAY}No good fishing spots in {self.town}.{C.RESET}")
+            press_enter(); return
+
+        # Choose rod
+        if has_old and has_good:
+            rod_choice = menu("Which rod?", ["🎣  Old Rod (common water creatures)",
+                                              "🎣  Good Rod (rarer & higher level)",
+                                              "← Cancel"])
+            if rod_choice == 2:
+                return
+            rod_name = "Good Rod" if rod_choice == 1 else "Old Rod"
+        elif has_good:
+            rod_name = "Good Rod"
+        else:
+            rod_name = "Old Rod"
+
+        fish_pool = FISH_GOOD_ROD.get(self.town, []) if rod_name == "Good Rod" \
+                    else FISH_OLD_ROD.get(self.town, [])
+        if not fish_pool:
+            slow_print(f"  {C.GRAY}No fish for {rod_name} here.{C.RESET}")
+            press_enter(); return
+
+        clear()
+        section(f"🎣  FISHING  —  {self.town}")
+        slow_print(f"  You cast your {C.BOLD}{rod_name}{C.RESET} into the water...", 0.03)
+        import time as _t; _t.sleep(0.6)
+
+        player_c = self._pick_lead()
+        if player_c is None: return
+
+        fish_count = 0
+        while True:
+            # Bobber animation
+            slow_print(f"\n  {C.CYAN}~ ~ ~ waiting for a bite... ~ ~ ~{C.RESET}", 0)
+            _t.sleep(random.uniform(0.5, 1.2))
+
+            roll = random.random()
+            if roll < 0.15:
+                slow_print(f"  {C.GRAY}Nothing biting... the water is calm.{C.RESET}")
+                press_enter()
+            else:
+                # A bite!
+                name, lo, hi = random.choice(fish_pool)
+                lv = random.randint(lo, hi)
+                wild = Creature(name, lv, is_player=False)
+                slow_print(f"  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
+                           f"{C.YELLOW} took the hook! (Lv.{wild.level}){C.RESET}")
+                press_enter()
+                player_c = self._pick_lead(player_c)
+                if player_c is None: break
+
+                result, obj = run_battle(player_c, wild, self.inventory,
+                                         self.team, wild=True, weather=None)
+                if result == "win":
+                    self._count_battle()
+                    self.award_exp(player_c, wild)
+                    self.earn_money(max(wild.level * 15, 100))
+                    alive_after = [c for c in self.team if c.is_alive()]
+                    if alive_after and not player_c.is_alive():
+                        player_c = alive_after[0]
+                    fish_count += 1
+                elif result == "caught":
+                    self._count_battle()
+                    captured = obj
+                    if captured.held_item:
+                        stolen = captured.held_item
+                        self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
+                        captured.held_item = None
+                        slow_print(f"  {C.YELLOW}★  {captured.name} was holding {stolen}!{C.RESET}")
+                    if len(self.team) < 6:
+                        self.team.append(captured)
+                        slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
+                        self._check_achievement("first_catch")
+                        self._check_achievement("first_fish")
+                        if len(self.team) == 6:
+                            self._check_achievement("team_full")
+                    else:
+                        slow_print(f"  {C.YELLOW}Team full! {captured.name} was released.{C.RESET}")
+                    press_enter()
+                    fish_count += 1
+                elif result == "lose":
+                    slow_print(f"  {C.RED}Your creatures fainted! Heading back to town...{C.RESET}")
+                    press_enter(); break
+
+            # Ask to keep fishing
+            cont_opts = ["🎣  Cast again", "← Leave fishing spot"]
+            if self.inventory.get("Escape Rope", 0) > 0:
+                cont_opts.insert(1, "🪢  Use Escape Rope (stop fishing)")
+            keep = menu(f"  {C.GRAY}[{fish_count} catches]{C.RESET}", cont_opts)
+            if keep != 0:
+                if "Escape Rope" in cont_opts[keep] if keep < len(cont_opts) else False:
+                    self.inventory["Escape Rope"] -= 1
+                slow_print(f"  {C.CYAN}You reel in your line. {fish_count} catch(es) today.{C.RESET}")
+                press_enter(); break
+
+    # ── EXPLORE GROTTO ─────────────────────────
+    def explore_grotto(self):
+        """Enter the hidden grotto for this town, if one exists."""
+        grotto = GROTTOS.get(self.town)
+        if not grotto:
+            slow_print(f"  {C.GRAY}No hidden grotto near {self.town}.{C.RESET}")
+            press_enter(); return
+
+        clear()
+        section(f"🕳  {grotto['name'].upper()}")
+        slow_print(f"  {C.GRAY}You slip through a hidden crevice and enter {grotto['name']}...{C.RESET}", 0.02)
+        self._check_achievement("grotto_found")
+
+        player_c = self._pick_lead()
+        if player_c is None: return
+
+        # Give grotto items (one random item from the pool)
+        grotto_item = random.choice(grotto["items"])
+        self.inventory[grotto_item] = self.inventory.get(grotto_item, 0) + 1
+        slow_print(f"\n  {C.YELLOW}✦  You find a {C.BOLD}{grotto_item}{C.RESET}"
+                   f"{C.YELLOW} tucked in the corner!{C.RESET}")
+        press_enter()
+
+        # Grotto creature encounters (2-4 fights, each optional)
+        creature_pool = grotto["creatures"]
+        max_encounters = random.randint(2, 4)
+        encounters_done = 0
+
+        while encounters_done < max_encounters:
+            clear()
+            section(f"🕳  {grotto['name']}")
+            alive_hp = "  ".join(
+                f"{C.BOLD}{c.name}{C.RESET} {hp_bar(c.hp, c.max_hp, 10)}"
+                for c in self.team if c.is_alive()
+            )
+            if alive_hp:
+                print(f"  {alive_hp}\n")
+
+            opts = ["🔦  Venture deeper", "← Leave grotto"]
+            go = menu("", opts)
+            if go == 1:
+                break
+
+            # Encounter
+            name, lo, hi = random.choice(creature_pool)
+            lv = random.randint(lo, hi)
+            wild = Creature(name, lv, is_player=False)
+            slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
+                       f"{C.YELLOW} leaps from the shadows! (Lv.{wild.level}){C.RESET}")
+            press_enter()
+            player_c = self._pick_lead(player_c)
+            if player_c is None: break
+
+            result, obj = run_battle(player_c, wild, self.inventory,
+                                     self.team, wild=True, weather=None)
+            if result == "win":
+                self._count_battle()
+                self.award_exp(player_c, wild)
+                self.earn_money(max(wild.level * 15, 100))
+                alive_after = [c for c in self.team if c.is_alive()]
+                if alive_after and not player_c.is_alive():
+                    player_c = alive_after[0]
+            elif result == "caught":
+                self._count_battle()
+                captured = obj
+                if captured.held_item:
+                    stolen = captured.held_item
+                    self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
+                    captured.held_item = None
+                    slow_print(f"  {C.YELLOW}★  {captured.name} was holding {stolen}!{C.RESET}")
+                if len(self.team) < 6:
+                    self.team.append(captured)
+                    slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
+                    self._check_achievement("first_catch")
+                    if len(self.team) == 6:
+                        self._check_achievement("team_full")
+                else:
+                    slow_print(f"  {C.YELLOW}Team full! {captured.name} was released.{C.RESET}")
+                press_enter()
+            elif result == "lose":
+                slow_print(f"  {C.RED}You were driven out of the grotto!{C.RESET}")
+                press_enter(); break
+
+            encounters_done += 1
+
+            # Bonus item every 2nd encounter
+            if encounters_done % 2 == 0 and encounters_done < max_encounters:
+                bonus = random.choice(grotto["items"])
+                self.inventory[bonus] = self.inventory.get(bonus, 0) + 1
+                slow_print(f"  {C.CYAN}✦  You spot another {bonus} as you move deeper!{C.RESET}")
+                press_enter()
+
+        slow_print(f"  {C.CYAN}You emerge from {grotto['name']}.{C.RESET}")
+        press_enter()
+
     # ── TOWN LOOP ──────────────────────────────
+
     def town_loop(self):
         while True:
             town_data = TOWNS[self.town]
@@ -1320,6 +1524,10 @@ class Game:
                 opts.append(f"⚔  Gym — {town_data['gym']['leader']}{tag}")
             if town_data.get("wild_area"):
                 opts.append(f"🌿  Explore {town_data['wild_area']}")
+            if FISH_OLD_ROD.get(self.town) or FISH_GOOD_ROD.get(self.town):
+                opts.append("🎣  Go Fishing")
+            if GROTTOS.get(self.town):
+                opts.append("🕳  Hidden Grotto")
             if self.town == "Champion Road":
                 opts.append("🏆  Challenge Elite Four")
             # Show rival battle option if one is pending in this town
@@ -1352,6 +1560,10 @@ class Game:
                 self.challenge_gym(town_data["gym"])
             elif label.startswith("Explore"):
                 self.explore(town_data["wild_area"])
+            elif label == "Go Fishing":
+                self.go_fishing()
+            elif label == "Hidden Grotto":
+                self.explore_grotto()
             elif label == "Challenge Elite Four":
                 self.challenge_elite_four()
             elif label.startswith("Rival Battle"):
