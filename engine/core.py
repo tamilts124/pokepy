@@ -103,6 +103,7 @@ class Creature:
         self.is_shiny  = False         # cosmetic shiny variant (rolled on wild spawn)
         self.friendship = BASE_FRIENDSHIP   # 0-100 bond stat; rises with care/wins
         self._bond_save_used = False   # one-per-battle flag for the maxed-bond survive proc
+        self._status_move_used = False  # one-per-battle flag for the tactical-AI status move proc
 
 
         # Moves: use learned set up to current level
@@ -231,12 +232,14 @@ class Creature:
             self.confusion_turns = 0
         self._sturdy_used = False   # Sturdy resets on switch
         self._bond_save_used = False   # bond-save proc resets on switch
+        self._status_move_used = False   # tactical-AI status move proc resets on switch
         # Starter ability one-shot notice flags reset on switch
         self._blaze_notified    = False
         self._overgrow_notified = False
         self._torrent_notified  = False
     def gain_exp(self, amount):
         """Returns list of events: level-ups, new moves, evolutions."""
+
         events = []
         self.exp += amount
         while self.exp >= self.exp_to_next:

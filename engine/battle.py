@@ -447,6 +447,19 @@ GYM_LEADER_ART = {
 }
 
 
+def _is_tactical_trainer(trainer_name, wild):
+    """True only for gym leaders and Elite Four members (not wild/route trainers/rivals)."""
+    if wild or not trainer_name:
+        return False
+    if trainer_name in GYM_LEADER_ART:
+        return True
+    try:
+        from data.creatures import ELITE_FOUR
+        return any(trainer_name == ch["name"] for ch in ELITE_FOUR)
+    except Exception:
+        return False
+
+
 def battle_ui(player_c, enemy_c, wild=True, weather=None, trainer_name=None):
     label = "Wild" if wild else "Foe"
     title = "  ⚔  WILD BATTLE  ⚔  " if wild else f"  ⚔  TRAINER BATTLE  —  {trainer_name}  ⚔  "
@@ -634,7 +647,7 @@ def check_choice_band_lock(attacker, move_name):
 #  ENEMY AI
 # ─────────────────────────────────────────────
 
-def enemy_move(enemy, player, weather=None):
+def enemy_move(enemy, player, weather=None, tactical=False, turn=1):
     # Pre-turn status check
     can_act, pre_msg = preturn_status_check(enemy)
     if pre_msg:
@@ -649,45 +662,61 @@ def enemy_move(enemy, player, weather=None):
         player.take_damage(dmg)
         return
 
-    # Smarter AI: score each move by expected damage
-    from data.creatures import TYPE_CHART
-    best_move = None
-    best_score = -1
-    for m in available:
-        move = MOVES[m]
-        effect = move.get("effect", "")
-        # Don't try to sleep/freeze/confuse if player already has a status
-        if effect in ("sleep", "freeze", "confuse", "poison", "burn", "paralyzed"):
-            if player.status is not None:
-                score = 5   # low priority
-            else:
-                score = 35 if effect in ("sleep", "freeze") else 25
-        elif effect in ("raise_atk", "raise_def", "raise_spd", "raise_atk2", "raise_spd2",
-                         "raise_spatk", "raise_spatk2", "raise_spdef", "raise_spdef2"):
-            # Self-buff: more valuable early; deprioritize if already capped
-            stat = {"raise_atk": "atk", "raise_def": "def", "raise_spd": "spd",
-                    "raise_atk2": "atk", "raise_spd2": "spd",
-                    "raise_spatk": "spatk", "raise_spatk2": "spatk",
-                    "raise_spdef": "spdef", "raise_spdef2": "spdef"}.get(effect, "atk")
-            score = 30 if enemy.stages.get(stat, 0) < 4 else 5
-        elif move["power"] == 0:
-            score = 20
-        else:
-            move_type = move["type"]
-            eff = 1.0
-            for t in player.types:
-                eff *= TYPE_CHART.get(move_type, {}).get(t, 1.0)
-            w_mult = weather_move_mult(weather, move_type)
-            stab = 1.5 if move_type in enemy.types else 1.0
-            score = move["power"] * eff * w_mult * stab
-        if score > best_score:
-            best_score = score
-            best_move = m
+    # Tactical AI (gym leaders / Elite Four only): on turns 1-3, a 25% chance
+    # to deliberately use a status move it hasn't used yet this battle, instead
+    # of always defaulting to the highest-scoring damage move. Adds unpredictability
+    # without making the AI use status moves every fight.
+    move_name = None
+    if (tactical and turn <= 3
+            and not getattr(enemy, '_status_move_used', False)
+            and random.random() < 0.25):
+        status_moves = [m for m in available if MOVES[m].get("category") == "status"]
+        if status_moves:
+            move_name = random.choice(status_moves)
+            enemy._status_move_used = True
 
-    move_name = best_move
+    if move_name is None:
+        # Smarter AI: score each move by expected damage
+        from data.creatures import TYPE_CHART
+        best_move = None
+        best_score = -1
+        for m in available:
+            move = MOVES[m]
+            effect = move.get("effect", "")
+            # Don't try to sleep/freeze/confuse if player already has a status
+            if effect in ("sleep", "freeze", "confuse", "poison", "burn", "paralyzed"):
+                if player.status is not None:
+                    score = 5   # low priority
+                else:
+                    score = 35 if effect in ("sleep", "freeze") else 25
+            elif effect in ("raise_atk", "raise_def", "raise_spd", "raise_atk2", "raise_spd2",
+                             "raise_spatk", "raise_spatk2", "raise_spdef", "raise_spdef2"):
+                # Self-buff: more valuable early; deprioritize if already capped
+                stat = {"raise_atk": "atk", "raise_def": "def", "raise_spd": "spd",
+                        "raise_atk2": "atk", "raise_spd2": "spd",
+                        "raise_spatk": "spatk", "raise_spatk2": "spatk",
+                        "raise_spdef": "spdef", "raise_spdef2": "spdef"}.get(effect, "atk")
+                score = 30 if enemy.stages.get(stat, 0) < 4 else 5
+            elif move["power"] == 0:
+                score = 20
+            else:
+                move_type = move["type"]
+                eff = 1.0
+                for t in player.types:
+                    eff *= TYPE_CHART.get(move_type, {}).get(t, 1.0)
+                w_mult = weather_move_mult(weather, move_type)
+                stab = 1.5 if move_type in enemy.types else 1.0
+                score = move["power"] * eff * w_mult * stab
+            if score > best_score:
+                best_score = score
+                best_move = m
+
+        move_name = best_move
+
     enemy.pp[move_name] -= 1
     move = MOVES[move_name]
     slow_print(f"  {C.RED}{_dname(enemy)}{C.RESET} used {C.BOLD}{move_name}{C.RESET}!")
+
 
     # Accuracy check for enemy (respects player's evasion/enemy's acc stage)
     if move["power"] != 0:
@@ -1078,6 +1107,9 @@ def run_battle(player_c, enemy_c, inventory, team,
     # Show gym leader art if applicable
     if not wild and trainer_name in GYM_LEADER_ART:
         print(GYM_LEADER_ART[trainer_name])
+
+    # Gym leaders / Elite Four get the tactical AI (status moves early on)
+    _tactical_ai = _is_tactical_trainer(trainer_name, wild)
 
     slow_print(f"  A {C.BOLD}{label} {enemy_c.name}{C.RESET} appeared!", 0.03)
     if weather:
@@ -1501,7 +1533,8 @@ def run_battle(player_c, enemy_c, inventory, team,
                 slow_print(f"  {C.YELLOW}» {_dname(enemy_c)} is faster! (Spd {e_spd} vs {p_spd}){C.RESET}")
             # Enemy attacks BEFORE player's move resolves
             hp_before = player_c.hp
-            enemy_move(enemy_c, player_c, weather)
+            enemy_move(enemy_c, player_c, weather, tactical=_tactical_ai, turn=summary.turns)
+
             _e_dmg = max(0, hp_before - player_c.hp)
             summary.player_dmg_taken += _e_dmg
             _recap["enemy_move"] = f"{_dname(enemy_c)} attacked"
@@ -1548,7 +1581,8 @@ def run_battle(player_c, enemy_c, inventory, team,
 
             # ── Enemy turn (player was faster or tied) ──
             hp_before = player_c.hp
-            enemy_move(enemy_c, player_c, weather)
+            enemy_move(enemy_c, player_c, weather, tactical=_tactical_ai, turn=summary.turns)
+
             _e_dmg = max(0, hp_before - player_c.hp)
             summary.player_dmg_taken += _e_dmg
             _recap["enemy_move"] = f"{_dname(enemy_c)} attacked"

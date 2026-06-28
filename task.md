@@ -1029,15 +1029,47 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     Manually confirmed Master Ball (₽9999, sell ₽4999) crosses the threshold. Re-ran the
     full 17-script regression suite — all still pass.
 
-- [ ] **Battle: enemy AI uses status moves** — status: todo
-  - notes: Enemy AI always picks the highest-power move. Creatures with status moves
-    (Growl, Smokescreen, Sleep Powder, Toxic, etc.) never use them, making late-game
-    fights predictable. Add a simple AI heuristic: if the enemy has a status move and
-    hasn't used it yet this battle, 25% chance to use it on turns 1-3. Subsequent turns
-    always go back to highest-power selection. Use a per-battle flag `_status_move_used`
-    (reset on switch like `_bond_save_used`) to prevent spam. Only apply to gym leaders
-    and Elite Four enemies (not random wild creatures or route trainers), where tactical
-    depth matters most.
+- [x] **Battle: enemy AI uses status moves** — status: done
+  - Investigated the claim in the task note ("enemy AI always picks the highest-power move,
+    status moves never used") against the real `enemy_move()` AI in `engine/battle.py` before
+    writing anything. The existing scoring AI (present since the initial commit, not something
+    a prior session half-built) does technically score status-effect moves (25-35) and
+    self-buffs (~30), but those scores are almost always beaten by ordinary attacking moves
+    (power 40-120 × effectiveness × STAB), so in practice status moves were picked so rarely
+    that the task's behavioral complaint held up even though the literal "never" wasn't
+    quite accurate. Built the requested feature as a deliberate override on top of the
+    existing scorer rather than reworking it.
+  - Added `_is_tactical_trainer(trainer_name, wild)` in `engine/battle.py`: True only when
+    `trainer_name` is a gym leader (already enumerated in the existing `GYM_LEADER_ART` dict)
+    or one of the 4 `ELITE_FOUR` entries from `data/creatures.py` (late-imported to avoid a
+    circular dependency) — False for wild encounters, route trainers, and rival battles.
+  - `run_battle()` computes `_tactical_ai = _is_tactical_trainer(trainer_name, wild)` once at
+    battle start and threads it (plus the live `summary.turns` as the current turn number)
+    into both `enemy_move()` call sites (enemy-faster and player-faster branches).
+  - `enemy_move(enemy, player, weather=None, tactical=False, turn=1)`: before the existing
+    scoring loop, if `tactical and turn <= 3 and not enemy._status_move_used` and a 25% RNG
+    roll hits, picks a random move from `[m for m in available if MOVES[m]["category"] ==
+    "status"]` (every non-damaging move in the data already carries this category field —
+    more robust than matching on `effect` names) and sets `enemy._status_move_used = True`.
+    If no status move is available, or the roll/turn/flag checks fail, falls through to the
+    untouched original scoring loop — `tactical=False` (the default) reproduces the exact
+    prior behavior with zero risk of regression for wild/route-trainer/rival battles.
+  - `Creature._status_move_used` added in `engine/core.py`'s `__init__` (alongside
+    `_bond_save_used`) and reset in `reset_stages()` the same way, so each gym/E4 creature
+    gets its own independent one-battle shot at the proc, consistent with how the existing
+    bond-save flag is scoped.
+  - Verified: `py_compile` clean on all 3 touched files. 9-assertion throwaway test (patched
+    `slow_print` to skip its character-by-character animation delay for speed) confirmed:
+    gym-leader/Elite-Four/other-trainer classification is correct for all 7 gym leaders and
+    all 4 Elite Four members; `tactical=False` never forces the override; `tactical=True` on
+    turns 1-3 can trigger it; the per-creature flag blocks a second proc in the same battle;
+    turns beyond 3 never trigger it; `reset_stages()` clears the flag; and a creature with no
+    status moves in its kit falls back to normal scoring without crashing. Re-ran the full
+    17-script regression suite — all still pass.
+  - Not independently verified by actually launching and fighting a gym leader in this
+    environment (no interactive terminal here) — confidence is based on `py_compile` +
+    the targeted unit test driving `enemy_move()` directly with the same arguments
+    `run_battle()` passes it, not a full interactive playthrough.
 
 - [ ] **Post-game area unlock: Champion's Grotto** — status: todo
   - notes: After beating the Elite Four and becoming Champion, nothing new opens up in
