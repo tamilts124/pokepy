@@ -446,6 +446,7 @@ def battle_ui(player_c, enemy_c, wild=True, weather=None, trainer_name=None):
 def animated_capture(enemy_c, item_name, ball_rate, lead=None):
     if lead is not None and getattr(lead, "friendship", 0) >= 80:
         slow_print(f"  {C.MAGENTA}{lead.name}'s calm presence settles the wild creature...{C.RESET}")
+        time.sleep(0.3)
     slow_print(f"  You threw a {C.BOLD}{item_name}{C.RESET}!", delay=0.03)
     time.sleep(0.4)
     caught, shakes = try_capture(enemy_c, ball_rate, lead=lead)
@@ -457,7 +458,8 @@ def animated_capture(enemy_c, item_name, ball_rate, lead=None):
         time.sleep(0.6)
         print(f"{C.RED}*break!*{C.RESET}")
     else:
-        print()
+        time.sleep(0.6)
+        print(f"{C.GREEN}★ Click!{C.RESET}")
     time.sleep(0.5)
     return caught, shakes
 
@@ -1143,7 +1145,6 @@ def run_battle(player_c, enemy_c, inventory, team,
         elif choice == 1:
             usable = {k: v for k, v in inventory.items()
                       if v > 0 and ITEMS.get(k, {}).get("type") in
-
                       ("heal", "cure", "revive", "capture", "pp", "boost")}
 
             if not usable:
@@ -1166,9 +1167,19 @@ def run_battle(player_c, enemy_c, inventory, team,
             if idata["type"] == "heal":
                 healed = min(idata["amount"], player_c.max_hp - player_c.hp)
                 player_c.heal(idata["amount"])
+                cured_status = False
                 if idata.get("amount", 0) >= 9999:
+                    if player_c.status:
+                        cured_status = True
                     player_c.status = None
-                slow_print(f"  {C.GREEN}{player_c.name} recovered {healed} HP!{C.RESET}")
+                if healed > 0:
+                    slow_print(f"  {C.GREEN}{player_c.name} recovered {healed} HP!{C.RESET}")
+                    if cured_status:
+                        slow_print(f"  {C.GREEN}Status condition cleared!{C.RESET}")
+                elif cured_status:
+                    slow_print(f"  {C.GREEN}{player_c.name}'s status condition was cleared!{C.RESET}")
+                else:
+                    slow_print(f"  {C.YELLOW}{player_c.name} is already at full HP!{C.RESET}")
 
             elif idata["type"] == "cure":
                 target_status = idata["status"]
@@ -1183,7 +1194,10 @@ def run_battle(player_c, enemy_c, inventory, team,
                     player_c.confusion_turns = 0
                     slow_print(f"  {C.GREEN}{player_c.name} was cured!{C.RESET}")
                 else:
-                    slow_print(f"  {C.YELLOW}No effect.{C.RESET}")
+                    if player_c.status is None:
+                        slow_print(f"  {C.YELLOW}{player_c.name} has no status condition.{C.RESET}")
+                    else:
+                        slow_print(f"  {C.YELLOW}That item doesn't cure {player_c.status.title()}.{C.RESET}")
                     inventory[item_name] += 1
                     took_turn = False
 
@@ -1203,10 +1217,10 @@ def run_battle(player_c, enemy_c, inventory, team,
                     slow_print(f"  {C.RED}Oh no! {enemy_c.name} broke free!{C.RESET}")
                     # Shake-count feedback: tells the player how close they were
                     _shake_hints = {
-                        0: f"  {C.GRAY}It didn't even twitch. Weaken it more or use a better ball.{C.RESET}",
-                        1: f"  {C.YELLOW}One shake — so close! Try lowering its HP further.{C.RESET}",
-                        2: f"  {C.YELLOW}Two shakes! Almost there. A Great Ball might do it.{C.RESET}",
-                        3: f"  {C.YELLOW}Three shakes — tantalizingly close! Try an Ultra Ball.{C.RESET}",
+                        0: f"  {C.GRAY}It didn't even twitch. Weaken it more or try a better ball.{C.RESET}",
+                        1: f"  {C.YELLOW}One shake — try weakening it further or upgrading your ball.{C.RESET}",
+                        2: f"  {C.YELLOW}Two shakes! Very close — try a Great Ball or weaken it more.{C.RESET}",
+                        3: f"  {C.GREEN}Three shakes — tantalizingly close! An Ultra or Master Ball should do it.{C.RESET}",
                     }
                     slow_print(_shake_hints.get(shakes, ""))
 

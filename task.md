@@ -631,16 +631,63 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     `_test_type_chart.py`, `_test_scope_lens_fix.py`, `_test_move_tips.py`) — all still pass.
     `py_compile` clean on both touched files.
 
+## Session 10 — Battle Bag/menu polish (2026-06)
+
+- [x] **Battle Bag/menu polish pass** — status: done
+  - Ran both `_ux_check_capture.py` and `_ux_check_shakes.py` (the previous session's UX
+    harnesses) to inspect the real rendered output before touching any code. Four UX issues
+    found:
+    1. **Calm presence / throw line crowding** — the friendship flavor line ("X's calm presence
+       settles the wild creature…") printed with no pause before the throw line, so both lines
+       appeared almost simultaneously. Fixed: added `time.sleep(0.3)` after the flavor line in
+       `animated_capture()` so the player can actually read it before the throw text arrives.
+    2. **Successful catch animation ended silently** — 4 shakes + blank line, then the calling
+       code's "★ Gotcha!" printed. No in-animation signal that the catch succeeded. Fixed:
+       replaced the blank `print()` on the caught branch with a `★ Click!` (green) with a
+       0.6s delay, mirroring the `*shake*` timing — now the animation reads as a complete
+       sequence: shake shake shake shake ★ Click! → ★ Gotcha!
+    3. **Shake-count hints had inaccurate wording** — "One shake — so close!" (it really isn't),
+       "Two shakes! … A Great Ball might do it" (player might already have one), "Three shakes
+       — Try an Ultra Ball" (player might already be using one). All three revised to be more
+       accurate and ball-agnostic: 1 shake → "try weakening further or upgrading your ball";
+       2 shakes → "try a Great Ball or weaken more"; 3 shakes (now green) → "An Ultra or
+       Master Ball should do it."
+    4. **Stale "No effect." message for cure items** — applying e.g. Antidote when not poisoned
+       just printed "No effect." with no explanation. Fixed: now shows either "X has no status
+       condition." or "That item doesn't cure Burn." (etc.) so the player understands what
+       happened and isn't left guessing.
+  - **Bonus fix**: Heal item "recovered 0 HP!" when already at full HP was confusing. Refactored
+    the heal branch to show "X is already at full HP!" when healed=0 and no status was cured,
+    and to separately show "Status condition cleared!" if a Full Restore cured status on an
+    already-full-HP creature (previously both cases merged into a single message).
+  - Confirmed: calm presence + throw sequence now reads naturally; the "★ Click!" provides
+    immediate visual closure on a successful catch before the celebratory "★ Gotcha!" line;
+    shake hints now guide the player without recommending balls they might already be using.
+  - No crowding/duplication with friendship "calm presence" and shake hints — they appear on
+    separate logical events (capture attempt start vs. capture failure) so they never overlap.
+  - Full regression suite passes; `py_compile` clean on `engine/battle.py`.
+
 ## New tasks — todo
 
-- [ ] **Battle Bag/menu polish pass** — status: todo
-  - Now that several held-item, friendship, and capture mechanics have accumulated, do a
-    pass over the in-battle Bag and Fight menus checking for stale or missing flavor text —
-    e.g. confirm the capture flavor line introduced for the friendship bonus doesn't crowd
-    out or duplicate the existing shake-count hints, and that item descriptions in the Bag
-    menu still read clearly with the newer items mixed in. This is a UX/feel pass (Tester
-    role), not a new mechanic — actually play through a few capture and item-use sequences
-    rather than just reading the code.
+- [ ] **Weather ability interactions: verbal feedback** — status: todo
+  - Swift Swim, Ice Body, and Speed Boost proc silently — the stat change happens but the
+    player only sees it if they open 📊 Stats. Add a brief end-of-turn line for each:
+    "X's Swift Swim sped it up in the rain!" / "X's Ice Body restored a little HP!" etc.
+    One line per proc per turn, so it's informative without flooding the log.
 
+- [ ] **Status condition duration UI** — status: todo
+  - Sleep and Confusion have turn counters (`sleep_turns`, `confusion_turns`) but the player
+    has no way to see how many turns remain without guessing. Show remaining turns next to
+    the status badge on the creature card during battle, e.g. "💤 Sleep (2)" so the player
+    can plan around it.
+
+- [ ] **Move power visual tier in fight menu** — status: todo
+  - The fight menu shows raw power numbers (Pwr:90) but a beginner can't immediately tell
+    if 90 is good or not. Add a 1-3 star or color-coded tier alongside the number:
+    ★ weak (≤40), ★★ medium (41–80), ★★★ strong (81+). Purely cosmetic, no logic change.
+
+- [ ] **Town map: highlight current location** — status: todo
+  - The ASCII world map renders all towns identically. Mark the player's current town with
+    a distinct color or ● indicator so they can orient themselves at a glance.
 
 
