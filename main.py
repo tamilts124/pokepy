@@ -102,6 +102,7 @@ class Game:
         self.seen        = set()         # creature names encountered in the wild
         self.caught      = set()         # creature names successfully captured
         self.is_champion = False         # True once the Elite Four has been beaten at least once
+        self.avatar      = "♂"          # trainer avatar symbol chosen at character creation
 
     # ── Achievement checker ────────────────────────────
     def _check_achievement(self, key):
@@ -394,7 +395,8 @@ class Game:
                   season=getattr(self, 'season', 'Spring'),
                   seen=getattr(self, 'seen', set()),
                   caught=getattr(self, 'caught', set()),
-                  is_champion=getattr(self, 'is_champion', False))
+                  is_champion=getattr(self, 'is_champion', False),
+                  avatar=getattr(self, 'avatar', '♂'))
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
 
@@ -888,7 +890,7 @@ class Game:
         clear()
         section("📊  TRAINER CARD")
         tod, tod_color, tod_icon = time_of_day()
-        slow_print(f"  Name    : {C.BOLD}{self.player_name}{C.RESET}")
+        slow_print(f"  Name    : {C.BOLD}{self.player_name}{C.RESET}  {C.CYAN}{getattr(self,'avatar','♂')}{C.RESET}")
         if getattr(self, 'is_champion', False):
             slow_print(f"  Title   : {C.YELLOW}★  Champion  ★{C.RESET}")
         slow_print(f"  Money   : {C.YELLOW}₽{self.money}{C.RESET}")
@@ -1809,6 +1811,13 @@ def new_game(g):
         name = input(f"  {C.CYAN}Enter your trainer name:{C.RESET} ").strip()
     g.player_name = name
 
+    # ── Avatar / gender ──
+    print()
+    slow_print(f"  {C.CYAN}Choose your trainer avatar:{C.RESET}")
+    avatar_opts = ["♂  (Male)", "♀  (Female)", "⚧  (Other)"]
+    av_idx = menu("", avatar_opts)
+    g.avatar = ["♂", "♀", "⚧"][av_idx]
+
     # ── Rival name ──
     print()
     rival_name = input(f"  {C.YELLOW}Enter your rival's name (default: Gary):{C.RESET} ").strip()
@@ -1904,6 +1913,7 @@ def main():
         g.seen        = set(saved.get("seen", []))
         g.caught      = set(saved.get("caught", []))
         g.is_champion = saved.get("is_champion", False)
+        g.avatar      = saved.get("avatar", "♂")
         # Load rival state
         from engine.rival import RivalState
         rival_data = saved.get("rival")
