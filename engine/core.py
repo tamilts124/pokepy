@@ -231,6 +231,10 @@ class Creature:
             self.confusion_turns = 0
         self._sturdy_used = False   # Sturdy resets on switch
         self._bond_save_used = False   # bond-save proc resets on switch
+        # Starter ability one-shot notice flags reset on switch
+        self._blaze_notified    = False
+        self._overgrow_notified = False
+        self._torrent_notified  = False
     def gain_exp(self, amount):
         """Returns list of events: level-ups, new moves, evolutions."""
         events = []

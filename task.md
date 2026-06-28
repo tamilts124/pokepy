@@ -669,11 +669,28 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ## New tasks — todo
 
-- [ ] **Weather ability interactions: verbal feedback** — status: todo
-  - Swift Swim, Ice Body, and Speed Boost proc silently — the stat change happens but the
-    player only sees it if they open 📊 Stats. Add a brief end-of-turn line for each:
-    "X's Swift Swim sped it up in the rain!" / "X's Ice Body restored a little HP!" etc.
-    One line per proc per turn, so it's informative without flooding the log.
+- [x] **Weather ability interactions: verbal feedback** — status: done
+  - Audit found the task description slightly overstated the problem: Ice Body and Speed Boost
+    already had `end_of_turn` hooks with printed messages (the in-game log showed them fine).
+    The real gaps were Swift Swim (purely a speed multiplier, completely silent) and
+    Blaze/Overgrow/Torrent (per-hit damage boost, also silent when they activate).
+  - **Swift Swim**: Added `on_entry` hook — fires `"🌧 X's Swift Swim kicked in! Speed doubled
+    in the rain!"` when entering battle (or switching in) while weather is Rainy; silent in all
+    other weather. Fires via the existing `fire_on_entry()` path already called at battle start
+    and on every switch-in — no call-site changes needed.
+  - **Blaze / Overgrow / Torrent**: Added `end_of_turn` hooks using a new helper
+    `_starter_ability_notice(c, ability_name, move_type, icon, color)` — fires a one-shot
+    colored notice the first time the creature's HP drops to ≤ 1/3 ("🔥 Flambit's Blaze
+    activated! Fire moves are now powered up!"). Uses a per-creature flag
+    (`_blaze_notified` etc.) to suppress repeats within the same send-in; flag cleared in
+    `reset_stages()` (which already runs on battle start and switch-in) so it re-fires if
+    the creature switches out and back in to low HP again.
+  - `engine/core.py` `reset_stages()` extended with three new flag clears; no other files
+    touched beyond `engine/battle.py`.
+  - Verified: `_test_swift_swim.py` (3 assertions: fires in rain, silent in sunny/None,
+    message wording) and `_test_ability_feedback.py` (6 assertions: Swift Swim + all three
+    starter abilities at/above threshold, one-shot suppression, flag reset on switch).
+    Full 8-file regression suite passes. `py_compile` clean on both touched files.
 
 - [ ] **Status condition duration UI** — status: todo
   - Sleep and Confusion have turn counters (`sleep_turns`, `confusion_turns`) but the player

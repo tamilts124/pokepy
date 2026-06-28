@@ -154,17 +154,26 @@ ABILITIES = {
         "damage_dealt_mult": lambda c, mtype, weather: (
             1.5 if mtype == "fire" and c.hp <= c.max_hp // 3 else 1.0
         ),
+        "end_of_turn": lambda c, weather: _starter_ability_notice(
+            c, "Blaze", "fire", "🔥", C.RED
+        ),
     },
     "Overgrow": {
         "desc": "Grass moves power up at low HP.",
         "damage_dealt_mult": lambda c, mtype, weather: (
             1.5 if mtype == "grass" and c.hp <= c.max_hp // 3 else 1.0
         ),
+        "end_of_turn": lambda c, weather: _starter_ability_notice(
+            c, "Overgrow", "grass", "🌿", C.GREEN
+        ),
     },
     "Torrent": {
         "desc": "Water moves power up at low HP.",
         "damage_dealt_mult": lambda c, mtype, weather: (
             1.5 if mtype == "water" and c.hp <= c.max_hp // 3 else 1.0
+        ),
+        "end_of_turn": lambda c, weather: _starter_ability_notice(
+            c, "Torrent", "water", "💧", C.CYAN
         ),
     },
     # ── Defensive ─────────────────────────────────────────
@@ -235,6 +244,10 @@ ABILITIES = {
     "Swift Swim": {
         "desc": "Speed doubled in Rainy weather.",
         "speed_mult": lambda c, weather: 2.0 if weather == "Rainy" else 1.0,
+        "on_entry": lambda c, foe, weather: (
+            [f"  {C.CYAN}🌧 {_dname(c)}'s Swift Swim kicked in! Speed doubled in the rain!{C.RESET}"]
+            if weather == "Rainy" else []
+        ),
     },
     # ── Type immunity ─────────────────────────────────────
     "Levitate": {
@@ -262,6 +275,16 @@ def _spore_cloud_proc(attacker):
         attacker.status = "sleep"
         attacker.sleep_turns = random.randint(1, 2)
         return [f"  {C.BLUE}{_dname(attacker)} was put to sleep by Spore Cloud!{C.RESET}"]
+    return []
+
+
+def _starter_ability_notice(c, ability_name, move_type, icon, color):
+    """One-shot notice when a starter ability (Blaze/Overgrow/Torrent) first activates."""
+    flag = f"_{ability_name.lower()}_notified"
+    if c.hp <= c.max_hp // 3 and not getattr(c, flag, False):
+        setattr(c, flag, True)
+        return [f"  {color}{icon} {_dname(c)}'s {ability_name} activated! "
+                f"{move_type.title()} moves are now powered up!{C.RESET}"]
     return []
 
 
