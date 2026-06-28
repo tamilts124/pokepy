@@ -361,9 +361,48 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     split against the new emoji option string to confirm it resolves to exactly "Talk to
     locals" so the `elif label == "Talk to locals":` branch is actually reachable.
 
-- [ ] **Explore: hidden grottos discoverable through exploration** — status: todo
-  - Currently grottos are a fixed menu option in towns that have one. Make them also
-    discoverable during the wild-area explore loop: small random chance (e.g. 3%) of stumbling
-    upon the grotto entrance while walking, with a distinct flavor line ("You notice a crack
-    in the cliff face…"). If the town has no grotto, no roll. This makes exploration feel
-    more rewarding and less like a static checklist.
+- [x] **Explore: hidden grottos discoverable through exploration** — status: done
+  - Carved a 3%-of-all-walks band (roll 0.76–0.79) out of the previously-unused "nothing
+    happens" tail of `explore()`'s walk roll, gated on `GROTTOS.get(self.town)` so towns
+    without a grotto keep their full original "nothing found" range untouched (no probability
+    shift for those towns). When the band hits, prints a flavor line ("You notice a crack in
+    the cliff face…") and calls the existing `explore_grotto()` directly, then naturally
+    continues the explore loop afterward.
+  - Verified: `py_compile` clean. A scripted harness pinned `random.random()` to land exactly
+    in the new band on the first "Walk further" while in Greenpath (which has a grotto per
+    `GROTTOS`) exploring its "Whisper Forest" wild area, and confirmed `explore_grotto()`
+    fires exactly once when the band is hit, with the expected flavor text printed beforehand
+    and the explore loop continuing normally afterward (next menu redraw, then a clean exit
+    via "Return to town"). `GROTTOS` is keyed by town name, not wild-area name, which is why
+    the check inside `explore()` uses `self.town` rather than `area_name`.
+
+## New tasks — todo
+
+- [ ] **Battle: turn-by-turn damage summary readability** — status: todo
+  - The post-battle summary already reports damage dealt/taken/turns/items/switches in
+    aggregate, but in-battle each hit just prints a single damage line. Consider a brief
+    "this exchange" recap (e.g. last 2 moves and their effect) shown once per turn — would
+    help players following fast multi-hit or weather-chip damage sequences without needing to
+    open the Battle Log every time.
+
+- [ ] **Shiny / rare color-variant creatures** — status: todo
+  - Add a small (~1/100) chance for any wild encounter (regular, seasonal, fishing, grotto) to
+    roll as a cosmetic "Shiny" variant: different display color/sparkle marker in battle and
+    Pokédex, no stat difference, purely a collector's flex. Persist `is_shiny` on `Creature`,
+    show a distinct catch message and Pokédex marker. Low mechanical risk, high "ooh!" payoff
+    — a good candidate for next session given the explore()/grotto/fishing encounter paths are
+    now all unified through similar code shapes.
+
+- [ ] **Daily/weekly login-style bonus for returning players** — status: todo
+  - Track `last_played_date` (real-world date, not in-game `season`) in the save file. On
+    first town-menu render of a new real-world day, show a small "Welcome back!" bonus (e.g. a
+    free Potion or a small money gift) — purely a retention/QoL touch, capped at once per
+    real day so it can't be farmed by reloading.
+
+- [ ] **Audit pass: confirm no other `alive[0]`-style dead-end patterns remain** — status: todo
+  - This session found and fixed one genuinely broken mid-cutoff edit (the `explore()` wild
+    battle block) and converted all known "pick first alive creature" call sites to
+    `_pick_lead(fainted_name=...)`. Worth a dedicated grep-and-read pass next session across
+    `engine/battle.py` and `engine/rival.py` (not just `main.py`) to confirm there isn't a
+    similar silent fallback elsewhere that never shows the new faint-switch prompt.
+

@@ -1796,16 +1796,24 @@ class Game:
 
 
             else:
-                msgs = [
-                    "Nothing but rustling leaves...",
-                    "The wind howls through the area.",
-                    "Footprints in the dirt — but nothing nearby.",
-                    "A cool breeze passes by.",
-                    "You find a berry bush but nothing useful.",
-                    "Strange sounds echo in the distance...",
-                ]
-                slow_print(f"  {C.GRAY}{random.choice(msgs)}{C.RESET}")
-                press_enter()
+                grotto = GROTTOS.get(self.town)
+                if grotto and roll < 0.79:
+                    # ── Hidden grotto discovery (3% of all walks, town-gated) ──
+                    slow_print(f"\n  {C.CYAN}✦  You notice a crack in the cliff face…{C.RESET}")
+                    slow_print(f"  {C.CYAN}It looks like it leads somewhere.{C.RESET}")
+                    press_enter()
+                    self.explore_grotto()
+                else:
+                    msgs = [
+                        "Nothing but rustling leaves...",
+                        "The wind howls through the area.",
+                        "Footprints in the dirt — but nothing nearby.",
+                        "A cool breeze passes by.",
+                        "You find a berry bush but nothing useful.",
+                        "Strange sounds echo in the distance...",
+                    ]
+                    slow_print(f"  {C.GRAY}{random.choice(msgs)}{C.RESET}")
+                    press_enter()
 
     # ── ELITE FOUR ─────────────────────────────
     def challenge_elite_four(self):
