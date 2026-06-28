@@ -504,6 +504,16 @@ class Game:
                 ab_name = c.ability or "None"
                 ab_desc = ABILITIES.get(ab_name, {}).get("desc", "")
                 print(f"  Ability : {C.BOLD}{ab_name}{C.RESET}  {C.GRAY}{ab_desc}{C.RESET}")
+                # Nature
+                if getattr(c, 'nature', None):
+                    from engine.core import NATURES
+                    boost, lower = NATURES.get(c.nature, (None, None))
+                    if boost and lower:
+                        nat_str = (f"{C.CYAN}{c.nature}{C.RESET}"
+                                   f"  {C.GRAY}({C.GREEN}+{boost}{C.GRAY} / {C.RED}-{lower}{C.GRAY}){C.RESET}")
+                    else:
+                        nat_str = f"{C.GRAY}{c.nature} (neutral){C.RESET}"
+                    print(f"  Nature  : {nat_str}")
                 if c.held_item:
                     print(f"  Held    : {C.YELLOW}{c.held_item}{C.RESET}")
                 print(f"  {C.GRAY}{CREATURES[c.name]['desc']}{C.RESET}")
@@ -518,15 +528,21 @@ class Game:
                     print(f"  EXP  {C.CYAN}[{bar}]{C.RESET} {c.exp}/{c.exp_to_next}")
                 print()
 
-                # Core stats
-                print(f"  {C.BOLD}{'STAT':<10} {'BASE':>6}{C.RESET}")
+                # Core stats — mark nature-boosted (+) and nature-lowered (-) stats
+                from engine.core import NATURES as _NAT
+                _boost, _lower = _NAT.get(getattr(c, 'nature', None) or '', (None, None))
+                def _nat_tag(sk):
+                    if sk == _boost: return f" {C.GREEN}▲{C.RESET}"
+                    if sk == _lower: return f" {C.RED}▼{C.RESET}"
+                    return ""
+                print(f"  {C.BOLD}{'STAT':<10} {'VAL':>6}{C.RESET}")
                 print(f"  {'─'*18}")
                 print(f"  {'HP':<10} {c.max_hp:>6}")
-                print(f"  {'Attack':<10} {c.atk:>6}")
-                print(f"  {'Defense':<10} {c.defense:>6}")
-                print(f"  {'Sp. Atk':<10} {c.sp_atk:>6}")
-                print(f"  {'Sp. Def':<10} {c.sp_def:>6}")
-                print(f"  {'Speed':<10} {c.spd:>6}")
+                print(f"  {'Attack':<10} {c.atk:>6}{_nat_tag('atk')}")
+                print(f"  {'Defense':<10} {c.defense:>6}{_nat_tag('def')}")
+                print(f"  {'Sp. Atk':<10} {c.sp_atk:>6}{_nat_tag('sp_atk')}")
+                print(f"  {'Sp. Def':<10} {c.sp_def:>6}{_nat_tag('sp_def')}")
+                print(f"  {'Speed':<10} {c.spd:>6}{_nat_tag('spd')}")
                 print()
 
                 # Moves

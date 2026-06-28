@@ -8,16 +8,60 @@ from data.creatures import CREATURES, MOVES, TYPE_CHART, ITEMS, WILD_AREAS
 SAVE_FILE = "save.json"
 
 # ─────────────────────────────────────────────
+#  NATURE SYSTEM
+# ─────────────────────────────────────────────
+# Each nature: (boosted_stat, lowered_stat) — None means neutral
+# Stats: "atk", "def", "sp_atk", "sp_def", "spd"
+NATURES = {
+    "Hardy":    (None, None),
+    "Lonely":   ("atk",    "def"),
+    "Brave":    ("atk",    "spd"),
+    "Adamant":  ("atk",    "sp_atk"),
+    "Naughty":  ("atk",    "sp_def"),
+    "Bold":     ("def",    "atk"),
+    "Docile":   (None, None),
+    "Relaxed":  ("def",    "spd"),
+    "Impish":   ("def",    "sp_atk"),
+    "Lax":      ("def",    "sp_def"),
+    "Timid":    ("spd",    "atk"),
+    "Hasty":    ("spd",    "def"),
+    "Serious":  (None, None),
+    "Jolly":    ("spd",    "sp_atk"),
+    "Naive":    ("spd",    "sp_def"),
+    "Modest":   ("sp_atk", "atk"),
+    "Mild":     ("sp_atk", "def"),
+    "Quiet":    ("sp_atk", "spd"),
+    "Bashful":  (None, None),
+    "Rash":     ("sp_atk", "sp_def"),
+    "Calm":     ("sp_def", "atk"),
+    "Gentle":   ("sp_def", "def"),
+    "Sassy":    ("sp_def", "spd"),
+    "Careful":  ("sp_def", "sp_atk"),
+    "Quirky":   (None, None),
+}
+NATURE_NAMES = list(NATURES.keys())
+
+def nature_mult(nature_name, stat):
+    """Return the stat multiplier (1.1, 0.9, or 1.0) for a nature/stat combo."""
+    boost, lower = NATURES.get(nature_name, (None, None))
+    if boost == stat:
+        return 1.1
+    if lower == stat:
+        return 0.9
+    return 1.0
+
+# ─────────────────────────────────────────────
 #  CREATURE INSTANCE
 # ─────────────────────────────────────────────
 class Creature:
-    def __init__(self, name, level, moves=None, is_player=True):
+    def __init__(self, name, level, moves=None, is_player=True, nature=None):
         self.name      = name
         self.level     = level
         self.is_player = is_player
         data           = CREATURES[name]
         self.types     = data["type"]
         self.ability   = data.get("ability", None)   # passive ability
+        self.nature    = nature if nature else random.choice(NATURE_NAMES)
         self.status    = None   # poison / burn / paralyzed / sleep / freeze / confuse / None
         # Sleep counter: how many turns the creature stays asleep (1-3)
         self.sleep_turns = 0
@@ -28,11 +72,11 @@ class Creature:
         bs = data["base_stats"]   # [hp, atk, def, sp_atk, sp_def, spd]
         self.max_hp  = self._calc_hp(bs[0])
         self.hp      = self.max_hp
-        self.atk     = self._calc_stat(bs[1])
-        self.defense = self._calc_stat(bs[2])
-        self.sp_atk  = self._calc_stat(bs[3])
-        self.sp_def  = self._calc_stat(bs[4])
-        self.spd     = self._calc_stat(bs[5])
+        self.atk     = self._calc_stat(bs[1], "atk")
+        self.defense = self._calc_stat(bs[2], "def")
+        self.sp_atk  = self._calc_stat(bs[3], "sp_atk")
+        self.sp_def  = self._calc_stat(bs[4], "sp_def")
+        self.spd     = self._calc_stat(bs[5], "spd")
         self.exp     = 0
         self.exp_to_next = self._exp_needed()
 
@@ -64,8 +108,11 @@ class Creature:
     def _calc_hp(self, base):
         return int((base * 2 * self.level) / 100) + self.level + 10
 
-    def _calc_stat(self, base):
-        return int((base * 2 * self.level) / 100) + 5
+    def _calc_stat(self, base, stat_key=None):
+        raw = int((base * 2 * self.level) / 100) + 5
+        if stat_key:
+            raw = int(raw * nature_mult(self.nature, stat_key))
+        return max(1, raw)
 
     def _exp_needed(self):
         return int(self.level ** 3 * 0.8)
@@ -154,11 +201,11 @@ class Creature:
             old_hp = self.max_hp
             self.max_hp  = self._calc_hp(bs[0])
             self.hp     += (self.max_hp - old_hp)
-            self.atk     = self._calc_stat(bs[1])
-            self.defense = self._calc_stat(bs[2])
-            self.sp_atk  = self._calc_stat(bs[3])
-            self.sp_def  = self._calc_stat(bs[4])
-            self.spd     = self._calc_stat(bs[5])
+            self.atk     = self._calc_stat(bs[1], "atk")
+            self.defense = self._calc_stat(bs[2], "def")
+            self.sp_atk  = self._calc_stat(bs[3], "sp_atk")
+            self.sp_def  = self._calc_stat(bs[4], "sp_def")
+            self.spd     = self._calc_stat(bs[5], "spd")
             events.append(("levelup", self.level))
             # New moves?
             for lv, mvs in CREATURES[self.name]["moves_learned"].items():
@@ -185,11 +232,11 @@ class Creature:
         old_hp = self.max_hp
         self.max_hp  = self._calc_hp(bs[0])
         self.hp     += (self.max_hp - old_hp)
-        self.atk     = self._calc_stat(bs[1])
-        self.defense = self._calc_stat(bs[2])
-        self.sp_atk  = self._calc_stat(bs[3])
-        self.sp_def  = self._calc_stat(bs[4])
-        self.spd     = self._calc_stat(bs[5])
+        self.atk     = self._calc_stat(bs[1], "atk")
+        self.defense = self._calc_stat(bs[2], "def")
+        self.sp_atk  = self._calc_stat(bs[3], "sp_atk")
+        self.sp_def  = self._calc_stat(bs[4], "sp_def")
+        self.spd     = self._calc_stat(bs[5], "spd")
         for lv, mvs in CREATURES[new_name]["moves_learned"].items():
             if lv <= self.level:
                 for m in mvs:
@@ -209,25 +256,27 @@ class Creature:
             "moves":       self.moves,
             "pp":          self.pp,
             "held_item":   self.held_item,
+            "nature":      self.nature,
         }
 
     @classmethod
     def from_dict(cls, d):
-        c = cls(d["name"], d["level"], moves=d["moves"])
+        c = cls(d["name"], d["level"], moves=d["moves"],
+                nature=d.get("nature"))        # restore saved nature (or pick random if old save)
         c.exp          = d["exp"]
         c.status       = d.get("status")
         c.sleep_turns  = d.get("sleep_turns", 0)
         c.pp           = d.get("pp", {m: MOVES[m]["pp"] for m in c.moves})
         c.held_item    = d.get("held_item")
-        # Always recalc stats from level — ignores any manual edits in save file
+        # Always recalc stats from level (nature already applied in __init__)
         bs = CREATURES[c.name]["base_stats"]
         c.max_hp  = c._calc_hp(bs[0])
         c.hp      = min(d["hp"], c.max_hp)   # clamp saved HP to valid range
-        c.atk     = c._calc_stat(bs[1])
-        c.defense = c._calc_stat(bs[2])
-        c.sp_atk  = c._calc_stat(bs[3])
-        c.sp_def  = c._calc_stat(bs[4])
-        c.spd     = c._calc_stat(bs[5])
+        c.atk     = c._calc_stat(bs[1], "atk")
+        c.defense = c._calc_stat(bs[2], "def")
+        c.sp_atk  = c._calc_stat(bs[3], "sp_atk")
+        c.sp_def  = c._calc_stat(bs[4], "sp_def")
+        c.spd     = c._calc_stat(bs[5], "spd")
         c._held_item_used = False   # always reset on load; re-triggers fresh each battle
         return c
 

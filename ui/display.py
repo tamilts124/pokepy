@@ -90,9 +90,20 @@ def creature_card(c, prefix="", show_exp=False):
         held_str = f"  {C.YELLOW}[{c.held_item}]{C.RESET}"
 
     print(f"{prefix}{C.BOLD}{c.name}{C.RESET} Lv.{c.level}  {types_str}{status_str}{held_str}")
-    # Show ability name inline if the creature has one
-    if getattr(c, 'ability', None):
-        print(f"{prefix}{C.GRAY}Ability: {c.ability}{C.RESET}")
+    # Show ability and nature inline
+    ability_str = f"Ability: {c.ability}" if getattr(c, 'ability', None) else ""
+    nature_str  = ""
+    if getattr(c, 'nature', None):
+        from engine.core import NATURES
+        boost, lower = NATURES.get(c.nature, (None, None))
+        if boost and lower:
+            nature_str = (f"Nature: {C.CYAN}{c.nature}{C.RESET}"
+                          f"  {C.GREEN}+{boost}{C.RESET}/{C.RED}-{lower}{C.RESET}")
+        else:
+            nature_str = f"Nature: {C.GRAY}{c.nature}{C.RESET}"
+    info_line = "  │  ".join(s for s in [ability_str, nature_str] if s)
+    if info_line:
+        print(f"{prefix}{C.GRAY}{info_line}{C.RESET}")
     print(f"{prefix}HP  {hp_bar(c.hp, c.max_hp)}")
     # EXP bar (only for player creatures that track exp)
     if show_exp and hasattr(c, 'exp') and hasattr(c, 'exp_to_next') and c.exp_to_next > 0:

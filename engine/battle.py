@@ -1175,6 +1175,16 @@ def run_battle(player_c, enemy_c, inventory, team,
                 spd   = _stage_bar(c.stages.get('spd',   0))
                 acc   = _stage_bar(c.stages.get('acc',   0))
                 print(f"  {label:<18} {atk:>5} {df:>5} {spatk:>6} {spdef:>6} {spd:>5} {acc:>5}")
+            # Show nature for player creature
+            if getattr(player_c, 'nature', None):
+                from engine.core import NATURES
+                boost, lower = NATURES.get(player_c.nature, (None, None))
+                if boost and lower:
+                    nature_tag = (f"{C.CYAN}{player_c.nature}{C.RESET}"
+                                  f"  ({C.GREEN}+{boost}{C.RESET} / {C.RED}-{lower}{C.RESET})")
+                else:
+                    nature_tag = f"{C.GRAY}{player_c.nature} (neutral){C.RESET}"
+                print(f"\n  {player_c.name}'s nature: {nature_tag}")
             press_enter()
             continue
 
