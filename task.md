@@ -1071,12 +1071,67 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     the targeted unit test driving `enemy_move()` directly with the same arguments
     `run_battle()` passes it, not a full interactive playthrough.
 
-- [ ] **Post-game area unlock: Champion's Grotto** — status: todo
-  - notes: After beating the Elite Four and becoming Champion, nothing new opens up in
-    the world. Add "Champion's Grotto" as a special grotto available only when
-    `is_champion=True`, accessible from Champion Road's explore menu. It uses the existing
-    `explore_grotto()` flow but with a curated pool of high-level (lv50-65) rare creatures
-    not found elsewhere — include 2-3 creatures normally only available as shinies or from
-    very late game areas. Also give it 100% held-item drop rate (the rarest berries and
-    one-off chance at a Life Orb) to reward completion. Add to `GROTTOS` dict keyed on
-    "Champion Road" and gate display in the explore menu behind `self.is_champion`.
+- [x] **Post-game area unlock: Champion's Grotto** — status: done
+  - Resumed from previous session's partial work: `data/creatures.py` and `main.py` both had
+    uncommitted changes with the core structure in place but the key mechanic (guaranteed
+    held-item drops) missing entirely — `explore_grotto()` still called
+    `_roll_held_item_with_pity()` on the `is_champion_grotto` path instead of picking
+    directly from the curated pool. Also missing: the in-loop section header still showed
+    the generic `🕳` icon regardless of grotto type.
+  - Completed this session:
+    - `data/creatures.py`: `GROTTOS["Champion Road"]` entry with 5 exclusive fully-evolved
+      creatures (`Mindstrike`, `Abyssking`, `Goliavine`, `Fungolith`, `Infernox`) at Lv50-65
+      — all five are confirmed not in any normal wild area or other grotto; high-value item
+      pool (Life Orb, 4 seasonal berries, Max Revive, Choice Band, Scope Lens); `guaranteed_held: True` flag.
+    - `main.py` `explore_grotto()`: `is_champion_grotto` flag from `guaranteed_held`;
+      distinct entrance banner (star icon + "radiant fissure" / "Only a Champion could sense
+      this place"); distinct item-find text ("glowing pedestal"); guaranteed held-item from
+      curated pool (`random.choice(grotto["items"])`) + pity counter reset; in-loop section
+      header uses `★` icon instead of `🕳` when `is_champion_grotto=True`.
+    - `main.py` `town_loop()`: regular grotto option excludes Champion Road; Champion's
+      Grotto option appears only when `is_champion=True` at Champion Road; handler wired for
+      both labels calling `explore_grotto()`.
+  - Verified: 10-test suite (`_test_champ_grotto.py`) all passed — structure, creature
+    validity, item validity, exclusivity (5/5 creatures exclusive), source-code branches,
+    gating, menu wiring. Full 18-script regression suite passes unchanged.
+
+
+
+## New tasks — todo (Session 14)
+
+- [ ] **Creature encyclopedia: move detail on hover/select** — status: todo
+  - notes: From the Creatures menu detail view, let the player press a number to inspect a
+    move in detail — show full stats (type, power, accuracy, PP, category, effect description)
+    in a sub-screen. Currently you can only see the move name, type tag and PP count in the
+    main detail card. This makes it much easier to evaluate whether a relearn or tutor move
+    is worth taking without having to open the in-battle fight menu to check.
+
+- [ ] **World map: show gym badge status on town labels** — status: todo
+  - notes: The world map already highlights the current town with a `►` marker and colors
+    towns with gyms differently. Extend it so each gym town label shows a small badge marker
+    (e.g. `✓` green / `✗` gray) next to the town name indicating whether its badge has been
+    earned. Players would be able to see their progression across the whole map at a glance
+    rather than needing to open the Badges screen separately.
+
+- [ ] **Trainer Card: win/loss stats per trainer type** — status: todo
+  - notes: The Trainer Card already shows total battles and rival score. Add a breakdown row
+    for Gym Leaders (X won, Y lost) and Elite Four (X attempted, Y completed) separately from
+    the general battle count. Requires tracking `gym_wins`, `gym_losses`, `e4_clears` counters
+    on `Game`, persisting them through save/load, and incrementing them at the relevant call
+    sites (already know from code that `challenge_gym()` and `challenge_elite_four()` are the
+    two sites).
+
+- [ ] **Explorer flavor events: random discoveries while walking** — status: todo
+  - notes: Add a small pool of rare (1-2%) flavor events to `explore()` beyond the existing
+    hidden-item finds. Examples: a trainer's lost item you can return for a reward (adds
+    money), a weather phenomenon that shifts the current weather for the rest of the session,
+    a mysterious footprint that adds a random creature to `self.seen` (simulates lore without
+    forcing an encounter), finding a message in a bottle with a game hint. Keeps long explore
+    sessions feeling fresh without disrupting the existing probability bands.
+
+- [ ] **Battle: multi-turn move animation feedback** — status: todo
+  - notes: Two-turn charge moves (like Solar Beam in Sunny weather, or any move with a
+    `charge_turn` mechanic) print "X is charging!" on turn 1 but give no visual indication
+    the player is still waiting. Add a small progress display: "Charging... [====    ]" shown
+    on the turn status bar for the charging creature, so the player can clearly tell they're
+    in a two-turn move rather than confused about whether their input registered.

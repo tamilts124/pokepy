@@ -2453,9 +2453,16 @@ class Game:
             slow_print(f"  {C.GRAY}No hidden grotto near {self.town}.{C.RESET}")
             press_enter(); return
 
+        is_champion_grotto = grotto.get("guaranteed_held", False)
+
         clear()
-        section(f"🕳  {grotto['name'].upper()}")
-        slow_print(f"  {C.GRAY}You slip through a hidden crevice and enter {grotto['name']}...{C.RESET}", 0.02)
+        if is_champion_grotto:
+            section(f"★  {grotto['name'].upper()}  ★")
+            slow_print(f"  {C.YELLOW}A radiant fissure in the cliff face pulses with energy...{C.RESET}", 0.02)
+            slow_print(f"  {C.CYAN}Only a Champion could sense this place.{C.RESET}", 0.02)
+        else:
+            section(f"🕳  {grotto['name'].upper()}")
+            slow_print(f"  {C.GRAY}You slip through a hidden crevice and enter {grotto['name']}...{C.RESET}", 0.02)
         self._check_achievement("grotto_found")
 
         player_c = self._pick_lead()
@@ -2464,8 +2471,12 @@ class Game:
         # Give grotto items (one random item from the pool)
         grotto_item = random.choice(grotto["items"])
         self.inventory[grotto_item] = self.inventory.get(grotto_item, 0) + 1
-        slow_print(f"\n  {C.YELLOW}✦  You find a {C.BOLD}{grotto_item}{C.RESET}"
-                   f"{C.YELLOW} tucked in the corner!{C.RESET}")
+        if is_champion_grotto:
+            slow_print(f"\n  {C.YELLOW}★  You find a {C.BOLD}{grotto_item}{C.RESET}"
+                       f"{C.YELLOW} resting on a glowing pedestal!{C.RESET}")
+        else:
+            slow_print(f"\n  {C.YELLOW}✦  You find a {C.BOLD}{grotto_item}{C.RESET}"
+                       f"{C.YELLOW} tucked in the corner!{C.RESET}")
         press_enter()
 
         # Grotto creature encounters (2-4 fights, each optional)
@@ -2474,9 +2485,11 @@ class Game:
         encounters_done = 0
         badge_bonus = self._diff_badge_bonus((len(self.badges) // 2) * 5)
 
+
         while encounters_done < max_encounters:
             clear()
-            section(f"🕳  {grotto['name']}")
+            section(f"{'★' if is_champion_grotto else '🕳'}  {grotto['name']}")
+
             alive_hp = "  ".join(
                 f"{C.BOLD}{c.name}{C.RESET} {hp_bar(c.hp, c.max_hp, 10)}"
                 for c in self.team if c.is_alive()
@@ -2493,7 +2506,14 @@ class Game:
             name, lo, hi = random.choice(creature_pool)
             lv = capped_wild_level(lo, hi, badge_bonus)
             wild = Creature(name, lv, is_player=False)
-            wild.held_item = self._roll_held_item_with_pity(name)
+            # Champion's Grotto guarantees a held item from its curated pool every encounter.
+            # Regular grottos use the normal pity-based random system.
+            if is_champion_grotto:
+                wild.held_item = random.choice(grotto["items"])
+                self.item_drought = 0  # counts as a drop, reset pity counter
+            else:
+                wild.held_item = self._roll_held_item_with_pity(name)
+
             self._apply_shiny_roll(wild)
 
             if getattr(wild, 'is_shiny', False):
@@ -2613,12 +2633,14 @@ class Game:
                 opts.append(f"🌿  Explore {town_data['wild_area']}")
             if FISH_OLD_ROD.get(self.town) or FISH_GOOD_ROD.get(self.town):
                 opts.append("🎣  Go Fishing")
-            if GROTTOS.get(self.town):
+            if GROTTOS.get(self.town) and self.town != "Champion Road":
                 opts.append("🕳  Hidden Grotto")
+            if GROTTOS.get(self.town) and self.town == "Champion Road" and getattr(self, 'is_champion', False):
+                opts.append("🕳  Champion's Grotto")
             if self.town == "Champion Road":
                 opts.append("🏆  Elite Four Rematch" if getattr(self, 'is_champion', False)
                             else "🏆  Challenge Elite Four")
-            # Show rival battle option if one is pending in this town
+
             from engine.rival import RIVAL_ENCOUNTERS
             pending_enc = self.rival.next_encounter(len(self.badges))
             if pending_enc and pending_enc["trigger_town"] == self.town:
@@ -2663,8 +2685,11 @@ class Game:
                 self.go_fishing()
             elif label == "Hidden Grotto":
                 self.explore_grotto()
+            elif label == "Champion's Grotto":
+                self.explore_grotto()
             elif label in ("Challenge Elite Four", "Elite Four Rematch"):
                 self.challenge_elite_four()
+
             elif label.startswith("Rival Battle"):
                 from engine.rival import RIVAL_ENCOUNTERS, run_rival_encounter
                 pending_enc = self.rival.next_encounter(len(self.badges))

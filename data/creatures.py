@@ -673,7 +673,24 @@ GROTTOS = {
     "Mistveil":    {"name": "Mist Grotto",      "creatures": [("Psychling", 30, 38),("Ghostlet", 30, 36)], "items": ["Full Heal", "Revive", "Lum Berry"]},
     "Shadowmere":  {"name": "Shadow Vault",     "creatures": [("Spectrex", 35, 44),("Toxidra", 34, 42)],  "items": ["Max Revive", "Scope Lens", "Sitrus Berry"]},
     "Dragonspire": {"name": "Dragon's Lair",    "creatures": [("Wyrmax", 42, 52),  ("Drakonis", 40, 50)], "items": ["Max Revive", "Life Orb", "Lum Berry"]},
+    # Champion's Grotto — exclusive post-game area; gated by is_champion in main.py.
+    # Contains fully-evolved forms not found in any normal wild area.
+    # guaranteed_held=True signals 100% held-item drops on every creature encounter.
+    "Champion Road": {
+        "name": "Champion's Grotto",
+        "creatures": [
+            ("Mindstrike",  50, 60),
+            ("Abyssking",   52, 62),
+            ("Goliavine",   50, 60),
+            ("Fungolith",   50, 58),
+            ("Infernox",    55, 65),
+        ],
+        "items": ["Life Orb", "Salac Berry", "Petaya Berry", "Apicot Berry",
+                  "Ganlon Berry", "Max Revive", "Choice Band", "Scope Lens"],
+        "guaranteed_held": True,
+    },
 }
+
 
 # ─────────────────────────────────────────────
 #  SEASONAL CREATURE BONUSES
