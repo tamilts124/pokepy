@@ -1022,6 +1022,17 @@ def run_battle(player_c, enemy_c, inventory, team,
         clear()
         battle_ui(player_c, enemy_c, wild, weather, trainer_name=trainer_name)
 
+        # Brief weather reminder at the start of each turn
+        if weather:
+            _wx_icon  = {"Sunny": "☀", "Rainy": "🌧", "Sandstorm": "🌪", "Hail": "❄"}.get(weather, "☁")
+            _wx_hints = {
+                "Sunny":     "Fire moves boosted, Water moves weakened.",
+                "Rainy":     "Water moves boosted, Fire moves weakened.",
+                "Sandstorm": "Rock/Steel/Ground take no chip; others lose 1/16 HP each turn.",
+                "Hail":      "Ice-types take no chip; others lose 1/16 HP each turn.",
+            }
+            slow_print(f"  {C.CYAN}{_wx_icon}  {weather}: {_wx_hints.get(weather, '')}{C.RESET}", 0.01)
+
         options = ["⚔  Fight", "🎒  Bag", "🔄  Switch Creature", "📊  Stats", "📜  Log"]
         if wild:
             options.append("🏃  Run")
@@ -1031,6 +1042,7 @@ def run_battle(player_c, enemy_c, inventory, team,
         took_turn  = False
         fought     = False
         move_name  = None
+
 
         # ══ FIGHT ══
         if choice == 0:
