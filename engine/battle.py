@@ -1100,9 +1100,18 @@ def run_battle(player_c, enemy_c, inventory, team,
                 summary.player_dmg_taken += dmg
                 took_turn = True
             else:
+                def _pwr_tier(pwr):
+                    if pwr == 0:
+                        return f"{C.GRAY}—   {C.RESET}"
+                    elif pwr <= 40:
+                        return f"{C.YELLOW}★   {C.RESET}"
+                    elif pwr <= 80:
+                        return f"{C.YELLOW}★★  {C.RESET}"
+                    else:
+                        return f"{C.RED}★★★ {C.RESET}"
                 move_opts = [
                     (f"{m:<16}  {C.GRAY}PP {player_c.pp[m]}/{MOVES[m]['pp']}"
-                     f"  Pwr:{MOVES[m]['power']:<4} "
+                     f"  Pwr:{MOVES[m]['power']:<4}{_pwr_tier(MOVES[m]['power'])} "
                      f"{TYPE_COLORS.get(MOVES[m]['type'], C.WHITE)}[{MOVES[m]['type'].upper():<8}]{C.RESET}"
                      f"  {type_hint(MOVES[m]['type'], enemy_c.types)}"
                      f"{(' ' + C.CYAN + '[FAST]' + C.RESET) if MOVES[m].get('priority',0) > 0 else ''}"

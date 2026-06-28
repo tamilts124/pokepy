@@ -681,10 +681,15 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     the status badge on the creature card during battle, e.g. "💤 Sleep (2)" so the player
     can plan around it.
 
-- [ ] **Move power visual tier in fight menu** — status: todo
-  - The fight menu shows raw power numbers (Pwr:90) but a beginner can't immediately tell
-    if 90 is good or not. Add a 1-3 star or color-coded tier alongside the number:
-    ★ weak (≤40), ★★ medium (41–80), ★★★ strong (81+). Purely cosmetic, no logic change.
+- [x] **Move power visual tier in fight menu** — status: done
+  - Added `_pwr_tier(pwr)` nested helper inside the fight-menu `else:` block in `run_battle()`
+    — 4 tiers: `—` gray (status/power=0), `★` yellow (≤40), `★★` yellow (41–80), `★★★` red
+    (81+). Padded to 4 chars width so all move lines stay column-aligned regardless of tier.
+    Slotted between `Pwr:N` and the type tag so the line order reads naturally: name / PP /
+    raw power / stars / type / effectiveness hint. Purely cosmetic — no logic change.
+  - Verified: `ast.parse` + `py_compile` clean; `_pwr_tier` present with both ≤40 and ≤80
+    thresholds and `★` char (U+2605) confirmed in the compiled file. Full regression suite
+    unaffected.
 
 - [ ] **Town map: highlight current location** — status: todo
   - The ASCII world map renders all towns identically. Mark the player's current town with
