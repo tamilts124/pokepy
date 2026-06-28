@@ -833,10 +833,23 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     whole repo; no merge-conflict markers found; smoke-launched `main.py` to confirm the title
     screen and menus render with no crash.
 
-- [ ] **Inn: choice of full heal vs cheaper partial heal** — status: todo
-  - The Inn currently costs a flat rate regardless of how hurt your team is. Add a second
-    option: "Partial Heal (restore 50% HP, ₽cheaper)" alongside the existing full heal.
-    Gives players a gold-management decision, especially useful early-game when money is tight.
+- [x] **Inn: choice of full heal vs cheaper partial heal** — status: done
+  - `visit_inn()` in `main.py` now branches: if the team has anything to heal, it shows a 3-way
+    `menu()` — Full Heal (₽cost, unchanged: full HP, cures status, restores all PP), Partial
+    Heal (₽`max(1, cost // 2)`, restores `ceil(missing_hp / 2)` HP per creature only — status
+    and PP are deliberately left untouched to make it a real trade-off, not just a cheaper
+    full heal), or Cancel. The already-fully-healed "pay anyway" single-confirm path is
+    unchanged. Insufficient-funds check now uses the price for whichever mode was picked.
+  - Verified via `_test_inn_partial_heal.py` (10 assertions: cost formula, 3-way menu wiring,
+    cancel exits without charging, correct branch-specific price deducted, full heal still
+    untouched, partial heal touches HP only via the ceil-50% formula and never status/PP,
+    money-guard uses the right price, numeric spot-check of the formula, already-full path
+    unchanged) — one test-only branch-isolation bug was found and fixed during verification
+    (the implementation itself was correct). Also hand-verified by scripting three live
+    `visit_inn()` calls (Full Heal, Partial Heal, Cancel) with a damaged + poisoned creature:
+    Full Heal → 29/29 HP, status cured, -₽300; Partial Heal → 22→26/29 HP (missing 7,
+    ceil(7/2)=4), status still poisoned, -₽150; Cancel → no HP/status/money change. Full
+    16-script regression suite passes; `py_compile` clean.
 
 - [ ] **Wild encounter level caps by badge count (hard cap)** — status: todo
   - Currently wild levels scale up with badges (badge_bonus), which is good. But there's no

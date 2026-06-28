@@ -707,24 +707,46 @@ class Game:
             print(f"  {dname:<16} {hp_str:>12}   {pp_str:>8}  {st_str}")
 
         print()
+        partial_cost = max(1, cost // 2)
+
         if not anything_to_heal:
             slow_print(f"  {C.GRAY}Your team is already at full health and PP!{C.RESET}")
             if not confirm(f"\n  Pay ₽{cost} anyway?"):
                 return
+            heal_mode = "full"
         else:
-            if not confirm(f"\n  Pay ₽{cost} to fully heal your team?"):
+            inn_opts = [
+                f"Full Heal     (₽{cost})  — full HP, cures status, restores all PP",
+                f"Partial Heal  (₽{partial_cost})  — restores 50% of missing HP only "
+                f"{C.GRAY}(status/PP unchanged){C.RESET}",
+                "← Cancel",
+            ]
+            ic = menu("How would you like to rest?", inn_opts)
+            if ic == 2:
                 return
+            heal_mode = "full" if ic == 0 else "partial"
 
-        if self.money < cost:
-            slow_print(f"  {C.RED}Not enough money! Need ₽{cost}.{C.RESET}")
+        pay = cost if heal_mode == "full" else partial_cost
+        if self.money < pay:
+            slow_print(f"  {C.RED}Not enough money! Need ₽{pay}.{C.RESET}")
             press_enter(); return
-        self.money -= cost
-        for c in self.team:
-            c.hp     = c.max_hp
-            c.status = None
-            c.pp     = {m: MOVE_DATA[m]["pp"] for m in c.moves}
-        slow_print(f"  {C.GREEN}Your team is fully healed! Rest well, trainer.{C.RESET}")
+        self.money -= pay
+
+        if heal_mode == "full":
+            for c in self.team:
+                c.hp     = c.max_hp
+                c.status = None
+                c.pp     = {m: MOVE_DATA[m]["pp"] for m in c.moves}
+            slow_print(f"  {C.GREEN}Your team is fully healed! Rest well, trainer.{C.RESET}")
+        else:
+            for c in self.team:
+                missing = c.max_hp - c.hp
+                if missing > 0:
+                    c.hp = min(c.max_hp, c.hp + (missing + 1) // 2)
+            slow_print(f"  {C.GREEN}Your team rests a while and recovers some HP.{C.RESET}")
+            slow_print(f"  {C.GRAY}(Status conditions and PP are unaffected by a partial heal.){C.RESET}")
         press_enter()
+
 
     # ── BAG ────────────────────────────────────
     def open_bag(self):
