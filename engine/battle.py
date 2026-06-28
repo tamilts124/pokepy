@@ -5,7 +5,8 @@ from engine.core import (calc_damage, try_capture, Creature, MOVES, ITEMS,
                           apply_weather_damage, weather_move_mult)
 from ui.display  import (C, slow_print, banner, hp_bar, creature_card,
                           menu, press_enter, section, clear,
-                          show_battle_log, reset_battle_log)
+                          show_battle_log, reset_battle_log, TYPE_COLORS)
+
 
 
 # ─────────────────────────────────────────────
@@ -1043,7 +1044,8 @@ def run_battle(player_c, enemy_c, inventory, team,
             else:
                 move_opts = [
                     (f"{m:<16}  {C.GRAY}PP {player_c.pp[m]}/{MOVES[m]['pp']}"
-                     f"  Pwr:{MOVES[m]['power']:<4} [{MOVES[m]['type']:<8}]{C.RESET}"
+                     f"  Pwr:{MOVES[m]['power']:<4} "
+                     f"{TYPE_COLORS.get(MOVES[m]['type'], C.WHITE)}[{MOVES[m]['type'].upper():<8}]{C.RESET}"
                      f"  {type_hint(MOVES[m]['type'], enemy_c.types)}"
                      f"{(' ' + C.CYAN + '[FAST]' + C.RESET) if MOVES[m].get('priority',0) > 0 else ''}"
                      f"\n     {C.GRAY}{MOVES[m].get('desc', '')}{C.RESET}")
@@ -1051,6 +1053,7 @@ def run_battle(player_c, enemy_c, inventory, team,
                 ]
                 move_opts.append("← Back")
                 mc = menu("Choose a move:", move_opts)
+
                 if mc == len(player_c.moves):
                     continue
                 move_name = player_c.moves[mc]
