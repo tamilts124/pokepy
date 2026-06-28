@@ -443,10 +443,12 @@ def battle_ui(player_c, enemy_c, wild=True, weather=None, trainer_name=None):
 #  ANIMATED CAPTURE
 # ─────────────────────────────────────────────
 
-def animated_capture(enemy_c, item_name, ball_rate):
+def animated_capture(enemy_c, item_name, ball_rate, lead=None):
+    if lead is not None and getattr(lead, "friendship", 0) >= 80:
+        slow_print(f"  {C.MAGENTA}{lead.name}'s calm presence settles the wild creature...{C.RESET}")
     slow_print(f"  You threw a {C.BOLD}{item_name}{C.RESET}!", delay=0.03)
     time.sleep(0.4)
-    caught, shakes = try_capture(enemy_c, ball_rate)
+    caught, shakes = try_capture(enemy_c, ball_rate, lead=lead)
     print(f"  ", end="", flush=True)
     for i in range(shakes):
         time.sleep(0.6)
@@ -1191,7 +1193,7 @@ def run_battle(player_c, enemy_c, inventory, team,
                     inventory[item_name] += 1
                     took_turn = False
                     continue
-                caught, shakes = animated_capture(enemy_c, item_name, idata["rate"])
+                caught, shakes = animated_capture(enemy_c, item_name, idata["rate"], lead=player_c)
                 if caught:
                     slow_print(f"  {C.GREEN}★  Gotcha! {enemy_c.name} was caught!{C.RESET}")
                     print('\a', end='', flush=True)

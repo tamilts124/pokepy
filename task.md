@@ -596,12 +596,51 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ## New tasks — todo
 
-- [ ] **Friendship-aware capture rate** — status: todo
-  - Now that `Creature.friendship` exists, a natural follow-on: let a trainer's *own* low-HP
-    creature occasionally calm a wild creature of the same species/type down a little before
-    a catch attempt (e.g. a small, capped bonus to `try_capture()`'s effective ball rate when
-    the lead creature is at high friendship), so the new bond stat has a payoff outside of
-    battle survival too. Keep it small — this should nudge catch odds, not replace the
-    existing Ultra/Master Ball progression.
+- [x] **Friendship-aware capture rate** — status: done
+  - Verified Session 10's final state first: working tree clean and in sync with origin
+    (commit `3204ab5`), all 6 core files `py_compile` clean, and the full existing test
+    suite (`_test_friendship.py` + the 5 prior regression scripts) passed unchanged. No
+    in-progress task was left hanging, so this picked up the queued follow-on fresh.
+  - Implementation: `friendship_capture_bonus(lead)` in `engine/core.py` — returns a 1.0–1.10
+    multiplier on the effective ball rate. No bonus below `FRIENDSHIP_CAPTURE_THRESHOLD = 80`
+    bond; above it, scales linearly up to `FRIENDSHIP_CAPTURE_MAX_BONUS = 0.10` (+10%) at
+    `MAX_FRIENDSHIP = 100`. `try_capture()` gained an optional `lead=None` kwarg (fully
+    backward compatible — the one other call site and any future direct caller still works
+    unchanged with no lead) that applies the bonus to `ball_rate` before the existing capture
+    math runs untouched.
+  - Threaded the player's active creature through as `lead`: `animated_capture()` in
+    `engine/battle.py` gained the same `lead=None` kwarg, and its single call site (the
+    in-battle Bag → capture-item handler) now passes `lead=player_c` — the active creature is
+    already in scope there. Added a one-line flavor message ("X's calm presence settles the
+    wild creature...") that only prints when the lead is actually at/above the 80-friendship
+    threshold, so the bonus is visible/felt and not just a silent number.
+  - Verified: new `_test_friendship_capture.py` — no-lead and below-threshold give exactly
+    1.0x, exactly-at-threshold gives 1.0x (bonus starts strictly above it), max friendship
+    gives exactly 1.10x, mid-range friendship interpolates strictly between the two: confirmed
+    `try_capture()`'s default behavior (no `lead` arg at all) is bit-for-bit identical to
+    passing `lead=None`. Used same-seed paired trials (reset RNG to the same seed before each
+    of the two calls) across 2000 borderline-catch scenarios to prove the bonded lead's higher
+    effective rate never produces *fewer* shakes or a missed catch where the unbonded case
+    caught, and does produce strictly more shakes in some trials — this is a deterministic
+    monotonicity proof rather than a noisy statistical sample, so it can't flake. Had to tune
+    the test's wild-HP/ball-rate scenario once the first attempt revealed the 10% bonus was
+    being swallowed by `int(a)` truncation at small magnitudes — confirmed via a throwaway
+    debug script (deleted after use) that printed the intermediate `a`/`b` capture-formula
+    values, then picked a low-HP/high-rate scenario where the delta survives truncation.
+    Re-ran the full existing regression suite (`_test_friendship.py`, `_test_lore.py`,
+    `_test_type_chart.py`, `_test_scope_lens_fix.py`, `_test_move_tips.py`) — all still pass.
+    `py_compile` clean on both touched files.
+
+## New tasks — todo
+
+- [ ] **Battle Bag/menu polish pass** — status: todo
+  - Now that several held-item, friendship, and capture mechanics have accumulated, do a
+    pass over the in-battle Bag and Fight menus checking for stale or missing flavor text —
+    e.g. confirm the capture flavor line introduced for the friendship bonus doesn't crowd
+    out or duplicate the existing shake-count hints, and that item descriptions in the Bag
+    menu still read clearly with the newer items mixed in. This is a UX/feel pass (Tester
+    role), not a new mechanic — actually play through a few capture and item-use sequences
+    rather than just reading the code.
+
 
 

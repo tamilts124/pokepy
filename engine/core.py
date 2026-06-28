@@ -562,8 +562,25 @@ def random_wild(area_name, badge_bonus=0):
 # ─────────────────────────────────────────────
 #  CAPTURE FORMULA
 # ─────────────────────────────────────────────
-def try_capture(wild, ball_rate):
+# A well-bonded lead creature calms wild creatures down a little before a throw —
+# small and capped so it nudges odds without replacing the Ultra/Master Ball progression.
+FRIENDSHIP_CAPTURE_THRESHOLD = 80    # lead's friendship must be at least this high to matter
+FRIENDSHIP_CAPTURE_MAX_BONUS = 0.10  # +10% effective ball rate at friendship 100
+
+def friendship_capture_bonus(lead):
+    """Effective ball-rate multiplier from the active lead creature's bond (1.0-1.10)."""
+    if lead is None:
+        return 1.0
+    friendship = getattr(lead, "friendship", 0)
+    if friendship < FRIENDSHIP_CAPTURE_THRESHOLD:
+        return 1.0
+    span = MAX_FRIENDSHIP - FRIENDSHIP_CAPTURE_THRESHOLD
+    frac = (friendship - FRIENDSHIP_CAPTURE_THRESHOLD) / span
+    return 1.0 + FRIENDSHIP_CAPTURE_MAX_BONUS * frac
+
+def try_capture(wild, ball_rate, lead=None):
     cr   = CREATURES[wild.name]["catch_rate"]
+    ball_rate = ball_rate * friendship_capture_bonus(lead)
     a    = ((3 * wild.max_hp - 2 * wild.hp) * cr * ball_rate) / (3 * wild.max_hp)
     a    = max(1, int(a))
     b    = 1048560 / math.sqrt(math.sqrt(16711680 / a))
