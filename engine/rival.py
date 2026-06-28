@@ -340,6 +340,7 @@ def run_rival_encounter(game, encounter):
             time.sleep(0.2)
     else:
         rival.rival_wins += 1
+        game.apply_loss_penalty()
         slow_print(f"\n  {C.RED}You lost to {rival.name}...{C.RESET}")
         for line in encounter["lose_lines"]:
             slow_print(f"  {C.BOLD}{rival.name}{C.RESET}: «{_fmt(line, game.player_name, rival)}»")
@@ -348,6 +349,7 @@ def run_rival_encounter(game, encounter):
     rival.battles_done.append(enc_id)
     print()
     slow_print(f"  {C.YELLOW}[Score: You {rival.player_wins}–{rival.rival_wins} {rival.name}]{C.RESET}")
+
     press_enter()
 
     game.save()

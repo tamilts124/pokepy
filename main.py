@@ -628,11 +628,19 @@ class Game:
         if self.money >= 10000:
             self._check_achievement("rich")
 
+    def apply_loss_penalty(self):
+        """Apply a money penalty for losing a trainer battle (not wild battles).
+        Deducts 10% of current money, min ₽100, max ₽1000. Displays a message."""
+        penalty = max(100, min(1000, self.money // 10))
+        self.money = max(0, self.money - penalty)
+        slow_print(f"  {C.RED}You lost ₽{penalty} in the confusion of defeat...{C.RESET}")
+
     def _count_battle(self):
         """Increment battle counter and fire battle100 achievement if threshold hit."""
         self.steps += 1
         if self.steps == 100:
             self._check_achievement("battle100")
+
 
 
     def save(self):
@@ -1716,11 +1724,13 @@ class Game:
                     if player_c is None: return
 
             elif result == "lose":
+                self.apply_loss_penalty()
                 slow_print(f"\n  {C.RED}You were defeated! Visit an Inn to recover.{C.RESET}")
                 press_enter(); return
 
         banner(f"  YOU DEFEATED {leader.upper()}!  ", C.GREEN)
         slow_print(f"  {C.BOLD}{leader}{C.RESET}: «You've earned the "
+
                    f"{C.YELLOW}{badge}{C.RESET}!»")
         self.badges.append(badge)
         print('\a', end='', flush=True)
@@ -1871,6 +1881,7 @@ class Game:
                         break
 
                 if lost:
+                    self.apply_loss_penalty()
                     slow_print(f"  {C.RED}You lost! Retreating...{C.RESET}")
                     press_enter()
                     clear()
@@ -1881,6 +1892,7 @@ class Game:
                     self._defeated_trainers.add(trainer_key)
                     press_enter()
                     clear()
+
 
             # ── Wild (50%) ──
             elif roll < 0.76:
@@ -2075,8 +2087,8 @@ class Game:
                         if player_c is None: break
 
                 elif result == "lose":
+                    self.apply_loss_penalty()
                     slow_print(f"\n  {C.RED}Defeated by {challenger['name']}...{C.RESET}")
-
                     slow_print("  Heal up and try again!")
                     press_enter(); return
 
@@ -2084,6 +2096,7 @@ class Game:
             press_enter()
 
         # CHAMPION!
+
         clear()
         banner("  ★ ★ ★  CHAMPION!  ★ ★ ★", C.YELLOW)
         name_centered = self.player_name.upper().center(44)

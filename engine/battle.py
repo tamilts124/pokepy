@@ -1010,12 +1010,41 @@ class BattleSummary:
         self.moves_super       = 0   # super-effective hits
         self.moves_resisted    = 0   # not-very-effective or immune hits
         self.enemy_types       = []  # foe's types (set once, used for tip generation)
+        self.player_start_hp   = 0   # lead's HP at battle start (for grade calc)
+
+    def _grade(self):
+        """Return (letter, color) performance grade based on battle stats."""
+        # Points start at 100; deduct for each inefficiency
+        pts = 100
+        # Turns: free up to 3, then -6 per extra turn
+        if self.turns > 3:
+            pts -= (self.turns - 3) * 6
+        # Items: -15 each
+        pts -= self.items_used * 15
+        # Switches: -10 each
+        pts -= self.switches * 10
+        # Damage taken as % of start HP: -0.3 per percent
+        if self.player_start_hp > 0:
+            pct_taken = (self.player_dmg_taken / self.player_start_hp) * 100
+            pts -= int(pct_taken * 0.3)
+        pts = max(0, pts)
+        if pts >= 90:
+            return "S", C.YELLOW + C.BOLD
+        elif pts >= 70:
+            return "A", C.GREEN + C.BOLD
+        elif pts >= 45:
+            return "B", C.CYAN
+        else:
+            return "C", C.GRAY
 
     def show(self, force=False):
         """Only display summary if the battle lasted more than 1 turn (or forced for trainer/gym battles)."""
         if self.turns <= 1 and not force:
             return
         section("📊  BATTLE SUMMARY")
+        # Performance grade
+        grade, grade_color = self._grade()
+        print(f"  Performance  : {grade_color}{grade}{C.RESET}")
         print(f"  Turns fought : {C.BOLD}{self.turns}{C.RESET}")
         print(f"  Damage dealt : {C.GREEN}{self.player_dmg_dealt}{C.RESET}")
         print(f"  Damage taken : {C.RED}{self.player_dmg_taken}{C.RESET}")
@@ -1062,11 +1091,13 @@ def run_battle(player_c, enemy_c, inventory, team,
 
     summary = BattleSummary()
     summary.enemy_types = list(enemy_c.types)   # capture foe type(s) for tip generation
+    summary.player_start_hp = player_c.hp       # record lead's HP for grade calc
 
     # Assign display tags so messages say "Your Flambit" vs "Wild Flambit" (or "Foe Flambit")
 
     player_c._battle_tag = "Your"
     enemy_c._battle_tag  = "Wild" if wild else "Foe"
+
     player_c.reset_stages()
     player_c._held_item_used = False
     player_c._choice_lock    = None
@@ -1161,18 +1192,25 @@ def run_battle(player_c, enemy_c, inventory, team,
                         return f"{C.YELLOW}{acc}%{C.RESET}"
                     else:
                         return f"{C.RED}{acc}%{C.RESET}"
+                def _cat_tag(cat):
+                    if cat == "physical":
+                        return f"{C.RED}Phys{C.RESET}"
+                    elif cat == "special":
+                        return f"{C.CYAN}Spec{C.RESET}"
+                    else:
+                        return f"{C.GRAY}Stat{C.RESET}"
                 move_opts = [
                     (f"{m:<16}  {C.GRAY}PP {player_c.pp[m]}/{MOVES[m]['pp']}"
                      f"  Pwr:{MOVES[m]['power']:<4}{_pwr_tier(MOVES[m]['power'])}"
                      f"Acc:{_acc_tag(MOVES[m]['accuracy'])}  "
+                     f"{_cat_tag(MOVES[m].get('category','status'))}  "
                      f"{TYPE_COLORS.get(MOVES[m]['type'], C.WHITE)}[{MOVES[m]['type'].upper():<8}]{C.RESET}"
                      f"  {type_hint(MOVES[m]['type'], enemy_c.types)}"
                      f"{(' ' + C.CYAN + '[FAST]' + C.RESET) if MOVES[m].get('priority',0) > 0 else ''}"
                      f"\n     {C.GRAY}{MOVES[m].get('desc', '')}{C.RESET}")
                     for m in player_c.moves
                 ]
-                move_opts.append("← Back")
-                mc = menu("Choose a move:", move_opts)
+
 
                 if mc == len(player_c.moves):
                     continue

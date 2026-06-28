@@ -789,6 +789,64 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     yellow when all are complete. Accessible from the town menu via new `🏆  Achievements`
     option (inserted after `📊  Trainer Card`). No data-layer changes needed — `achievements`
     list was already persisted via `save_game()`/`load_game()`. Verified via
-    `_test_achievements.py` (7 tests: method existence, menu wiring, handler wiring, compile
-    clean, 0-/partial-/full-achievement renders). All 11 regression scripts still pass.
+    `_test_achievements.py` (7 tests: method existence, menu wiring, handler wiring, compile\n    clean, 0-/partial-/full-achievement renders). All 11 regression scripts still pass.
+
+## Session 11 new tasks — todo
+
+## Session 12 — Resume from mid-task cutoff (2026-06)
+
+- [x] **Battle performance rating** — status: done
+  - Found partially implemented on session start: `_grade()` method, `player_start_hp` field,
+    and grade display in `show()` were all complete and correct in `engine/battle.py`. The
+    task note in task.md was marked todo but the code was already there — verified it compiled
+    and the logic was sound before touching anything.
+  - Grade scoring: 100 pts base; -6 per turn beyond 3 free turns; -15 per item used;
+    -10 per switch; -0.3 per % of lead's max HP taken. S ≥ 90, A ≥ 70, B ≥ 45, C = below.
+    Grade shown as first line of the post-battle summary (after the section header, before
+    turns/damage). Color-coded: S yellow+bold, A green+bold, B cyan, C gray.
+  - Verified via `_test_session12.py`: S for perfect run (2t, 0 items, 0 switches, 5% dmg),
+    A for clean run (5t, 0 items, 0 switches, 20% dmg), B for decent run (5t, 1 item,
+    1 switch, 20% dmg), C for rough run (12t, 3 items, 2 switches, 80% dmg).
+
+- [x] **Money penalty on trainer loss** — status: done
+  - Also found partially implemented on session start: `apply_loss_penalty()` was defined in
+    `main.py`, wired into gym/Elite Four/random-trainer losses, and wired into rival loss in
+    `engine/rival.py`. One critical bug was present: the random-trainer for-loop (which
+    battles a trainer's 1–3 creatures in sequence) had `lost = True` without a `break`
+    — meaning after losing the first battle, the loop would attempt to start another battle
+    with an already-wiped team. Fixed by restoring the `break` on line 1881.
+  - Penalty: `max(100, min(1000, money // 10))` — 10% of current money, floored at ₽100,
+    capped at ₽1000. Message: "You lost ₽N in the confusion of defeat...". Wild losses
+    (explore, fish, grotto) are penalty-free — no call added there.
+  - Verified via `_test_session12.py`: formula correct, all 3 main.py call sites present,
+    rival.py call site present, break-after-lost confirmed via regex search.
+
+- [x] **Fight menu: show move category (Phys/Spec/Stat)** — status: done
+  - Added `_cat_tag(cat)` helper alongside `_pwr_tier` and `_acc_tag` in `run_battle()`'s
+    fight-menu block. Returns red `Phys`, cyan `Spec`, or gray `Stat` (each 4 chars, padded)
+    based on the move's `category` key. Slotted between `Acc:` and `[TYPE]` in the move
+    option f-string so the column order reads: Name | PP | Pwr | Stars | Acc | Cat | [TYPE] |
+    effectiveness hint.
+  - Verified via `_test_session12.py`: helper present, all three branches confirmed, used in
+    move_opts f-string, py_compile clean. Full 14-script regression suite passes unchanged.
+
+## Session 12 new tasks — todo
+
+- [ ] **Gym leader pre-battle type preview** — status: todo
+  - Show a brief "Type: [GRASS]" line (or "Team: Grass/Normal") for each gym leader before
+    the battle starts, so players can decide if they want to heal or swap held items first.
+    Currently there is no preview — you only know the leader's type from having visited the
+    town before. This removes a potential frustration point without making the game easier.
+
+- [ ] **Inn: choice of full heal vs cheaper partial heal** — status: todo
+  - The Inn currently costs a flat rate regardless of how hurt your team is. Add a second
+    option: "Partial Heal (restore 50% HP, ₽cheaper)" alongside the existing full heal.
+    Gives players a gold-management decision, especially useful early-game when money is tight.
+
+- [ ] **Wild encounter level caps by badge count (hard cap)** — status: todo
+  - Currently wild levels scale up with badges (badge_bonus), which is good. But there's no
+    hard upper cap, so a player with 7 badges in Greenpath (a starter area) could theoretically
+    see Lv.30+ wilds where the base range is Lv.3–8. Add a per-area level cap that clamps
+    the badge-boosted level at 2× the area's base `hi` range, so early areas stay catchable
+    even late-game (important for Pokédex completion without trivial instant-KOs).
 
