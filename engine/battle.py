@@ -1132,9 +1132,19 @@ def run_battle(player_c, enemy_c, inventory, team,
                         return f"{C.YELLOW}★★  {C.RESET}"
                     else:
                         return f"{C.RED}★★★ {C.RESET}"
+                def _acc_tag(acc):
+                    if acc >= 100:
+                        return f"{C.GRAY}—  {C.RESET}"
+                    elif acc >= 90:
+                        return f"{C.WHITE}{acc}%{C.RESET}"
+                    elif acc >= 75:
+                        return f"{C.YELLOW}{acc}%{C.RESET}"
+                    else:
+                        return f"{C.RED}{acc}%{C.RESET}"
                 move_opts = [
                     (f"{m:<16}  {C.GRAY}PP {player_c.pp[m]}/{MOVES[m]['pp']}"
-                     f"  Pwr:{MOVES[m]['power']:<4}{_pwr_tier(MOVES[m]['power'])} "
+                     f"  Pwr:{MOVES[m]['power']:<4}{_pwr_tier(MOVES[m]['power'])}"
+                     f"Acc:{_acc_tag(MOVES[m]['accuracy'])}  "
                      f"{TYPE_COLORS.get(MOVES[m]['type'], C.WHITE)}[{MOVES[m]['type'].upper():<8}]{C.RESET}"
                      f"  {type_hint(MOVES[m]['type'], enemy_c.types)}"
                      f"{(' ' + C.CYAN + '[FAST]' + C.RESET) if MOVES[m].get('priority',0) > 0 else ''}"

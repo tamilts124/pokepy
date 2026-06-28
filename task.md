@@ -698,6 +698,8 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     when turns=0 (wake-up edge). Poison/Burn/Paralysis/Freeze unaffected (no turn counter
     to show). Implemented in `creature_card()` in `ui/display.py`. Verified via
     `_test_status_duration.py` (7 assertions, all pass). Full regression suite still passes.
+
+- [x] **Move power visual tier in fight menu** — status: done
   - Added `_pwr_tier(pwr)` nested helper inside the fight-menu `else:` block in `run_battle()`
     — 4 tiers: `—` gray (status/power=0), `★` yellow (≤40), `★★` yellow (41–80), `★★★` red
     (81+). Padded to 4 chars width so all move lines stay column-aligned regardless of tier.
@@ -707,8 +709,49 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     thresholds and `★` char (U+2605) confirmed in the compiled file. Full regression suite
     unaffected.
 
-- [ ] **Town map: highlight current location** — status: todo
-  - The ASCII world map renders all towns identically. Mark the player's current town with
-    a distinct color or ● indicator so they can orient themselves at a glance.
+- [x] **Town map: highlight current location** — status: done (was already implemented)
+  - Verified against `ui/display.py`: `show_world_map()` already accepts `current_town` and
+    `badges` params. The `is_here` check in the town-label loop sets `color = C.CYAN + C.BOLD`
+    and `marker = '►'` for the current town, visually distinct from all other nodes. The legend
+    at the bottom of the map explicitly notes `►Town (you are here)`. Called correctly from
+    `main.py` as `show_world_map(self.town, self.badges)`. Feature was complete all along —
+    task entry was stale.
 
+## Session 10 new tasks — todo
+
+- [ ] **Held item shop: dedicated held-item vendor** — status: todo
+  - Currently all held items (Life Orb, Choice Band, Leftovers, etc.) can only be found on
+    wild creatures as random drops or given by the player. Add a special vendor NPC in
+    Dragonspire (the final pre-Champion town) who sells the full catalogue of held items at
+    premium prices (e.g. ₽3000–₽5000 each), giving late-game players a reliable way to
+    outfit their team without relying purely on RNG drops.
+
+- [ ] **Egg moves / tutor expansion: teach moves based on type** — status: todo
+  - The current Move Tutor in each town teaches 2–3 fixed moves. Expand the Dragonspire tutor
+    to offer type-coverage moves relevant to the player's current team (e.g. if the team has a
+    Fire-type, offer a Water-coverage move like Surf or Ice Beam). Limit to 3 suggestions per
+    visit, chosen based on team types — gives late-game players meaningful build decisions.
+
+- [x] **Battle: per-move accuracy display in fight menu** — status: done
+  - Added `_acc_tag(acc)` helper alongside `_pwr_tier` in `engine/battle.py`. Shows a gray
+    em-dash `—` for 100% accuracy (perfect = no clutter), white `XX%` for ≥90, yellow `XX%`
+    for ≥75, red `XX%` for anything below. Slot inserted between the star-tier and the type
+    tag: `Pwr:90  ★★★ Acc:—   [FIRE   ]  ▲▲`. Color-codes the risk at a glance without
+    hiding information. Verified via `_test_acc_display.py` (8 assertions), full regression
+    suite passes.
+
+
+- [ ] **Rival: show rival's type-resistance weaknesses in battle** — status: todo
+  - When battling the rival, the player has no way to know what types the rival's creatures
+    are weak to until they experiment. Add a one-line hint in the rival battle UI (alongside
+    the existing creature card) showing the rival creature's type and its 2–3 biggest
+    weaknesses, similar to how the wild/gym encounter card shows type. Lets the player build
+    strategy instead of guessing.
+
+- [ ] **Achievement gallery: show unlocked achievements with timestamps** — status: todo
+  - The 11 achievements fire during gameplay but there is currently no way to review which
+    ones you've earned. Add an `open_achievements()` screen accessible from the town menu
+    (below Trainer Card) that lists all 11 achievements, marks each as ✓ (earned) or ○
+    (locked), and for earned ones shows a short flavor description of what triggered it.
+    Save/load already persists the `achievements` set so no data-layer work needed.
 
