@@ -101,6 +101,7 @@ class Game:
         self._defeated_trainers = set()  # track rematched trainers by (area, name_hash)
         self.seen        = set()         # creature names encountered in the wild
         self.caught      = set()         # creature names successfully captured
+        self.is_champion = False         # True once the Elite Four has been beaten at least once
 
     # ── Achievement checker ────────────────────────────
     def _check_achievement(self, key):
@@ -346,7 +347,8 @@ class Game:
                   achievements=getattr(self, 'achievements', []),
                   season=getattr(self, 'season', 'Spring'),
                   seen=getattr(self, 'seen', set()),
-                  caught=getattr(self, 'caught', set()))
+                  caught=getattr(self, 'caught', set()),
+                  is_champion=getattr(self, 'is_champion', False))
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
 
@@ -841,6 +843,8 @@ class Game:
         section("📊  TRAINER CARD")
         tod, tod_color, tod_icon = time_of_day()
         slow_print(f"  Name    : {C.BOLD}{self.player_name}{C.RESET}")
+        if getattr(self, 'is_champion', False):
+            slow_print(f"  Title   : {C.YELLOW}★  Champion  ★{C.RESET}")
         slow_print(f"  Money   : {C.YELLOW}₽{self.money}{C.RESET}")
         slow_print(f"  Badges  : {len(self.badges)}/{len(REQUIRED_BADGES)}")
         slow_print(f"  Battles : {self.steps}")
@@ -1325,8 +1329,17 @@ class Game:
             slow_print(f"  {C.YELLOW}Missing: {', '.join(missing)}{C.RESET}")
             press_enter(); return
 
-        banner("  ★  THE ELITE FOUR  ★  ", C.MAGENTA)
-        slow_print("""
+        rematch = getattr(self, 'is_champion', False)
+
+        if rematch:
+            banner("  ★  ELITE FOUR REMATCH  ★  ", C.MAGENTA)
+            slow_print("""
+  The Elite Four await a rematch — stronger than ever.
+  No Inn between rounds. Only your team will carry you through.
+""", 0.02)
+        else:
+            banner("  ★  THE ELITE FOUR  ★  ", C.MAGENTA)
+            slow_print("""
   Four masters stand between you and the championship.
   No Inn between rounds. Only your team will carry you through.
 """, 0.02)
@@ -1346,7 +1359,13 @@ class Game:
             slow_print(f"  «Your journey ends here, {self.player_name}!»")
             press_enter()
 
-            for cname, lv in challenger["team"]:
+            # Rematch: scale every Elite Four member up to at least level 70
+            # (relative boost preserved so the Champion still hits hardest).
+            team_list = challenger["team"]
+            if rematch:
+                team_list = [(cname, max(70, lv + 20)) for cname, lv in team_list]
+
+            for cname, lv in team_list:
                 enemy  = Creature(cname, lv, is_player=False)
                 result, obj = run_battle(player_c, enemy, self.inventory,
                                          self.team, wild=False,
@@ -1381,10 +1400,14 @@ class Game:
         slow_print(f"  Battles fought: {C.YELLOW}{self.steps}{C.RESET}")
         slow_print(f"  Final team:")
         team_summary(self.team)
+        if not rematch:
+            self._check_achievement("champion")
+            self.is_champion = True
         self.save()
         press_enter()
         # Final rival battle fires here
-        trigger_post_elite_rival(self)
+        if not rematch:
+            trigger_post_elite_rival(self)
 
     # ── GO FISHING ─────────────────────────────
     def go_fishing(self):
@@ -1630,7 +1653,8 @@ class Game:
             if GROTTOS.get(self.town):
                 opts.append("🕳  Hidden Grotto")
             if self.town == "Champion Road":
-                opts.append("🏆  Challenge Elite Four")
+                opts.append("🏆  Elite Four Rematch" if getattr(self, 'is_champion', False)
+                            else "🏆  Challenge Elite Four")
             # Show rival battle option if one is pending in this town
             from engine.rival import RIVAL_ENCOUNTERS
             pending_enc = self.rival.next_encounter(len(self.badges))
@@ -1666,7 +1690,7 @@ class Game:
                 self.go_fishing()
             elif label == "Hidden Grotto":
                 self.explore_grotto()
-            elif label == "Challenge Elite Four":
+            elif label in ("Challenge Elite Four", "Elite Four Rematch"):
                 self.challenge_elite_four()
             elif label.startswith("Rival Battle"):
                 from engine.rival import RIVAL_ENCOUNTERS, run_rival_encounter
@@ -1826,6 +1850,7 @@ def main():
         g.season      = saved.get("season", "Spring")
         g.seen        = set(saved.get("seen", []))
         g.caught      = set(saved.get("caught", []))
+        g.is_champion = saved.get("is_champion", False)
         # Load rival state
         from engine.rival import RivalState
         rival_data = saved.get("rival")

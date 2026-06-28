@@ -68,10 +68,23 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
   - Verified with an isolated unit check (`effective_spd()` increases correctly when `_xspd_boost`
     is set) plus a full `py_compile` pass on all touched files.
 
-- [ ] **Post-game content** — status: todo
-  - After Champion: Elite Four rematch at lv 70+, Champion title on Trainer Card.
+- [x] **Post-game content** — status: done
+  - After becoming Champion: fires the previously-dead `"champion"` achievement (it was defined in
+    `ACHIEVEMENTS` but never triggered anywhere — another stale/unfired achievement, same class of
+    bug as the Pokédex one above), sets a new persistent `Game.is_champion` flag (saved/loaded via
+    `save_game`/`load_game`), and shows a `★  Champion  ★` title line on the Trainer Card.
+  - Elite Four Rematch: once `is_champion` is True, the Champion Road menu option becomes
+    "🏆  Elite Four Rematch" instead of "Challenge Elite Four", and every Elite Four member's level
+    is scaled to `max(70, original_level + 20)` for the fight (verified: all 4 challengers land at
+    70+, Champion Aria's team still hits hardest at 76–80). Rematches don't re-fire the achievement
+    or the post-Elite-Four rival cutscene (first-clear only).
+  - Verified via `py_compile`, an isolated scaling-logic check, and a Game-instantiation smoke test.
 
 - [ ] **Pokédex entry detail view** — status: todo
   - From the Pokédex list, select a caught/seen creature to view its full dex entry (types, base stats,
     abilities, evolution line). Currently the list only shows name + type.
   - notes: natural follow-up now that the Pokédex list itself is wired in and working.
+
+- [ ] **Rival rematch / extended post-game** — status: todo
+  - Now that Elite Four rematches exist, consider letting the rival also offer rematches at scaled
+    levels post-Champion, separate from the one-time scripted 5-encounter story.
