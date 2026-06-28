@@ -326,9 +326,11 @@ def run_rival_encounter(game, encounter):
 
     if battle_result == "win":
         rival.player_wins += 1
+        if rival.player_wins >= 3:
+            game._check_achievement("rival_winner")
         prize = enc_id * 500 + 500
         game.earn_money(prize)
-        slow_print(f"\n  {C.GREEN}★  You defeated {rival.name}!{C.RESET}")
+
         for line in encounter["win_lines"]:
             slow_print(f"  {C.BOLD}{rival.name}{C.RESET}: «{_fmt(line, game.player_name, rival)}»")
             time.sleep(0.2)

@@ -257,6 +257,15 @@ class Game:
     def earn_money(self, amount):
         self.money += amount
         slow_print(f"  {C.YELLOW}You earned ₽{amount}!{C.RESET}")
+        if self.money >= 10000:
+            self._check_achievement("rich")
+
+    def _count_battle(self):
+        """Increment battle counter and fire battle100 achievement if threshold hit."""
+        self.steps += 1
+        if self.steps == 100:
+            self._check_achievement("battle100")
+
 
     def save(self):
         save_game(self.player_name, self.town, self.team,
@@ -978,7 +987,7 @@ class Game:
             result, obj = run_battle(player_c, enemy, self.inventory,
                                      self.team, wild=False, trainer_name=leader)
             if result == "win":
-                self.steps += 1
+                self._count_battle()
                 self.award_exp(player_c, enemy)
                 prize_money += lv * 60
                 alive = [c for c in self.team if c.is_alive()]
@@ -992,7 +1001,11 @@ class Game:
         slow_print(f"  {C.BOLD}{leader}{C.RESET}: «You've earned the "
                    f"{C.YELLOW}{badge}{C.RESET}!»")
         self.badges.append(badge)
+        self._check_achievement("first_badge")
+        if len(self.badges) == len(REQUIRED_BADGES):
+            self._check_achievement("all_badges")
         self.earn_money(prize_money)
+
         # Auto-save after each badge
         self.save()
         press_enter()
@@ -1100,8 +1113,9 @@ class Game:
                                              self.team, wild=False,
                                              trainer_name=t_name, weather=weather)
                     if result == "win":
-                        self.steps += 1
+                        self._count_battle()
                         self.award_exp(player_c, enemy)
+
                         prize_money += lv * 40
                         alive_after = [c for c in self.team if c.is_alive()]
                         if alive_after and not player_c.is_alive():
@@ -1149,7 +1163,7 @@ class Game:
                     result, obj = run_battle(player_c, wild, self.inventory,
                                              self.team, wild=True, weather=weather)
                     if result == "win":
-                        self.steps += 1
+                        self._count_battle()
                         self.award_exp(player_c, wild)
                         self.earn_money(max(wild.level * 15, 100))
                         alive_after = [c for c in self.team if c.is_alive()]
@@ -1157,7 +1171,7 @@ class Game:
                             player_c = alive_after[0]
                         clear()
                     elif result == "caught":
-                        self.steps += 1
+                        self._count_battle()
                         captured = obj
                         # If the captured wild was holding an item, give it to the player
                         if captured.held_item:
@@ -1168,6 +1182,9 @@ class Game:
                         if len(self.team) < 6:
                             self.team.append(captured)
                             slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
+                            self._check_achievement("first_catch")
+                            if len(self.team) == 6:
+                                self._check_achievement("team_full")
                         else:
                             slow_print(f"  {C.YELLOW}Team full (max 6)! "
                                        f"{captured.name} was released.{C.RESET}")
@@ -1175,6 +1192,7 @@ class Game:
                     elif result == "lose":
                         slow_print(f"  {C.RED}Your creatures fainted! Retreating...{C.RESET}")
                         press_enter(); break
+
 
             else:
                 msgs = [
@@ -1223,13 +1241,14 @@ class Game:
                                          self.team, wild=False,
                                          trainer_name=challenger["name"])
                 if result == "win":
-                    self.steps += 1
+                    self._count_battle()
                     self.award_exp(player_c, enemy)
                     alive = [c for c in self.team if c.is_alive()]
                     if alive and not player_c.is_alive():
                         player_c = alive[0]
                 elif result == "lose":
                     slow_print(f"\n  {C.RED}Defeated by {challenger['name']}...{C.RESET}")
+
                     slow_print("  Heal up and try again!")
                     press_enter(); return
 
