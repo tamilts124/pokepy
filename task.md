@@ -1095,9 +1095,26 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     validity, item validity, exclusivity (5/5 creatures exclusive), source-code branches,
     gating, menu wiring. Full 18-script regression suite passes unchanged.
 
+## Session 14 — Bug-fix (2026-06)
 
+- [x] **Bug: fight menu NameError crash on choosing Fight** — status: done
+  - Root cause: the two lines `move_opts.append("← Back")` and `mc = menu("Choose a move:",
+    move_opts)` were deleted from `engine/battle.py`'s fight-menu block when `_cat_tag()` was
+    added in commit `d49fcb2`. The variable `mc` was used on the very next line but never
+    assigned, causing an immediate `NameError: name 'mc' is not defined` every single time a
+    player chose "Fight" — i.e. the game was completely unplayable from the fight menu. The
+    bug was present in all commits since `d49fcb2` and was not caught because the regression
+    tests check code presence rather than actually running a battle turn.
+  - Fix: restored the two missing lines at the correct indentation level between the
+    `move_opts` list close and the `if mc == len(player_c.moves):` guard. The `if player_c.pp
+    .get(move_name, 0) == 0:` guard line had also been deleted by cascading line-range
+    confusion during the fix attempt; restored that too. Verified the full block matches the
+    reference version from commit `8d03af1`. All 17 regression scripts still pass; all 6
+    core files compile clean.
 
 ## New tasks — todo (Session 14)
+
+
 
 - [ ] **Creature encyclopedia: move detail on hover/select** — status: todo
   - notes: From the Creatures menu detail view, let the player press a number to inspect a
@@ -1113,7 +1130,8 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     earned. Players would be able to see their progression across the whole map at a glance
     rather than needing to open the Badges screen separately.
 
-- [ ] **Trainer Card: win/loss stats per trainer type** — status: todo
+- [ ] **Trainer Card: win/loss stats per trainer type** — status: in-progress
+
   - notes: The Trainer Card already shows total battles and rival score. Add a breakdown row
     for Gym Leaders (X won, Y lost) and Elite Four (X attempted, Y completed) separately from
     the general battle count. Requires tracking `gym_wins`, `gym_losses`, `e4_clears` counters

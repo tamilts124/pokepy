@@ -1242,7 +1242,8 @@ def run_battle(player_c, enemy_c, inventory, team,
                      f"\n     {C.GRAY}{MOVES[m].get('desc', '')}{C.RESET}")
                     for m in player_c.moves
                 ]
-
+                move_opts.append("← Back")
+                mc = menu("Choose a move:", move_opts)
 
                 if mc == len(player_c.moves):
                     continue
@@ -1250,6 +1251,7 @@ def run_battle(player_c, enemy_c, inventory, team,
                 if player_c.pp.get(move_name, 0) == 0:
                     slow_print(f"{C.RED}No PP left for that move!{C.RESET}")
                     continue
+
 
                 hp_before = enemy_c.hp
                 player_attack(player_c, enemy_c, move_name, boosts, weather)
