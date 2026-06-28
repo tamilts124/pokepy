@@ -21,14 +21,16 @@ from engine.core    import (Creature, save_game, load_game, list_save_slots, ran
 from data.creatures import (CREATURES, ITEMS, TOWNS, WILD_AREAS,
                              ELITE_FOUR, REQUIRED_BADGES, RANDOM_TRAINERS,
                              FISH_OLD_ROD, FISH_GOOD_ROD, GROTTOS,
-                             SEASONAL_WILDS, SEASONAL_BERRY)
+                             SEASONAL_WILDS, SEASONAL_BERRY, TYPE_CHART)
+
 from engine.battle  import run_battle, HELD_ITEMS
 from engine.rival   import (RivalState, trigger_rival_if_due,
                              trigger_post_elite_rival, COUNTER_STARTER)
 from ui.display     import (C, clear, slow_print, banner, section,
                              hp_bar, creature_card, team_summary,
                              menu, confirm, pause, press_enter,
-                             show_world_map, show_type_chart)
+                             show_world_map, show_type_chart, TYPE_COLORS)
+
 
 SEASONS = ["Spring", "Summer", "Autumn", "Winter"]
 SEASON_COLORS = {"Spring": C.GREEN, "Summer": C.YELLOW, "Autumn": C.RED, "Winter": C.CYAN}
@@ -1696,6 +1698,7 @@ class Game:
         badge  = gym_data["badge"]
         leader = gym_data["leader"]
         quote  = gym_data.get("quote", "Prepare yourself!")
+        gym_type = gym_data.get("type", "")
 
         if badge in self.badges:
             slow_print(f"  {C.YELLOW}You already have the {badge}.{C.RESET}")
@@ -1703,10 +1706,31 @@ class Game:
 
         banner(f"  GYM LEADER  {leader.upper()}  ", C.RED)
         slow_print(f"  {C.BOLD}{leader}{C.RESET}: «{quote}»")
+
+        # ── Type preview ────────────────────────────────────────────────────
+        if gym_type:
+            t_color = TYPE_COLORS.get(gym_type, C.WHITE)
+            print(f"\n  Specialist type : {t_color}[{gym_type.upper()}]{C.RESET}")
+            # Compute weaknesses (types that deal 2× to this gym's specialty)
+            weaknesses = sorted(
+                atk for atk in TYPE_CHART
+                if TYPE_CHART[atk].get(gym_type, 1.0) >= 2.0
+            )
+            if weaknesses:
+                weak_tags = "  ".join(
+                    f"{TYPE_COLORS.get(w, C.WHITE)}[{w.upper()}]{C.RESET}"
+                    for w in weaknesses[:4]
+                )
+                print(f"  Weak to         : {weak_tags}")
+            n_creatures = len(gym_data.get("team", []))
+            print(f"  Team size       : {C.BOLD}{n_creatures}{C.RESET} creature{'s' if n_creatures != 1 else ''}")
+            print()
+
         press_enter()
 
         player_c = self._pick_lead()
         if player_c is None: return
+
 
         prize_money = 0
         for cname, lv in gym_data["team"]:
@@ -2412,9 +2436,13 @@ class Game:
             if town_data.get("inn"):
                 opts.append(f"🏨  Inn  (₽{town_data['inn']} — full heal)")
             if town_data.get("gym"):
-                badge = town_data["gym"]["badge"]
-                tag   = f" {C.GREEN}[✓]{C.RESET}" if badge in self.badges else ""
-                opts.append(f"⚔  Gym — {town_data['gym']['leader']}{tag}")
+                badge    = town_data["gym"]["badge"]
+                tag      = f" {C.GREEN}[✓]{C.RESET}" if badge in self.badges else ""
+                gtype    = town_data["gym"].get("type", "")
+                type_tag = (f"  {TYPE_COLORS.get(gtype, C.WHITE)}[{gtype.upper()}]{C.RESET}"
+                            if gtype else "")
+                opts.append(f"⚔  Gym — {town_data['gym']['leader']}{type_tag}{tag}")
+
             if town_data.get("wild_area"):
                 opts.append(f"🌿  Explore {town_data['wild_area']}")
             if FISH_OLD_ROD.get(self.town) or FISH_GOOD_ROD.get(self.town):

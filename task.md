@@ -832,11 +832,23 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ## Session 12 new tasks — todo
 
-- [ ] **Gym leader pre-battle type preview** — status: todo
-  - Show a brief "Type: [GRASS]" line (or "Team: Grass/Normal") for each gym leader before
-    the battle starts, so players can decide if they want to heal or swap held items first.
-    Currently there is no preview — you only know the leader's type from having visited the
-    town before. This removes a potential frustration point without making the game easier.
+- [x] **Gym leader pre-battle type preview** — status: done
+  - Resumed from a previous session that was cut off mid-task: the feature was already fully
+    coded in `data/creatures.py` and `main.py` (uncommitted) when this session started. Verified
+    it was complete and correct before building anything on top of it, then committed it.
+  - Added a `"type"` key to all 7 gym dicts in `TOWNS` (`data/creatures.py`). `challenge_gym()`
+    in `main.py` now prints a `Specialist type : [TYPE]` line plus a `Weak to :` line (up to 4
+    types, computed live against `TYPE_CHART` rather than hard-coded) and a `Team size :` line,
+    shown right after the leader's quote and before the player picks their lead. The town menu's
+    gym option also shows a color-coded `[TYPE]` tag next to the leader's name so the type is
+    visible without entering the gym screen at all.
+  - Verified via `_test_gym_preview.py` (10 assertions: compile-clean, all 7 gyms carry the
+    correct type, `TYPE_CHART`/`TYPE_COLORS` imported correctly, preview lines present, weaknesses
+    computed live and capped at 4, town-menu tag wired, gym routing unbroken, fire-type spot
+    check). One stale quote-style assertion in the test itself was corrected (the implementation
+    was already right). Full 15-script regression suite passes; `py_compile` clean across the
+    whole repo; no merge-conflict markers found; smoke-launched `main.py` to confirm the title
+    screen and menus render with no crash.
 
 - [ ] **Inn: choice of full heal vs cheaper partial heal** — status: todo
   - The Inn currently costs a flat rate regardless of how hurt your team is. Add a second

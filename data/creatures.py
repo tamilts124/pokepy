@@ -536,7 +536,7 @@ TOWNS = {
     "Greenpath": {
         "desc": "A lush town near the great forest.",
         "connections": ["Rootvale", "Mudfen", "Stonepeak"],
-        "gym": {"leader": "Fern", "badge": "Leaf Badge", "quote": "Nature bows to no one!", "team": [("Leafling", 12), ("Mushrump", 13), ("Buzzbee", 14)]},
+        "gym": {"leader": "Fern", "badge": "Leaf Badge", "type": "grass", "quote": "Nature bows to no one!", "team": [("Leafling", 12), ("Mushrump", 13), ("Buzzbee", 14)]},
         "shop": ["Potion", "Super Potion", "Capture Ball", "Antidote", "Awakening", "Cheer Up", "Elixir", "Oran Berry"],
         "wild_area": "Whisper Forest",
         "inn": 200,
@@ -544,7 +544,7 @@ TOWNS = {
     "Stonepeak": {
         "desc": "A mountain town carved into the cliffs.",
         "connections": ["Greenpath", "Ashveil", "Frostholm"],
-        "gym": {"leader": "Granite", "badge": "Rock Badge", "quote": "My creatures are solid as stone!", "team": [("Pebblur", 20), ("Steelbit", 21), ("Bouldrax", 23)]},
+        "gym": {"leader": "Granite", "badge": "Rock Badge", "type": "rock", "quote": "My creatures are solid as stone!", "team": [("Pebblur", 20), ("Steelbit", 21), ("Bouldrax", 23)]},
         "shop": ["Super Potion", "Great Ball", "Escape Rope", "Burn Heal", "Ice Heal", "Awakening", "Cheer Up", "Sitrus Berry", "Good Rod"],
         "wild_area": "Rocky Tunnel",
         "inn": 300,
@@ -552,7 +552,7 @@ TOWNS = {
     "Ashveil": {
         "desc": "A volcanic town covered in warm ash. Lava flows nearby.",
         "connections": ["Stonepeak", "Frostholm"],
-        "gym": {"leader": "Cinder", "badge": "Ember Badge", "quote": "Feel the heat of my fury!", "team": [("Ashpup", 26), ("Flamclaw", 28), ("Volcanix", 30)]},
+        "gym": {"leader": "Cinder", "badge": "Ember Badge", "type": "fire", "quote": "Feel the heat of my fury!", "team": [("Ashpup", 26), ("Flamclaw", 28), ("Volcanix", 30)]},
         "shop": ["Super Potion", "Great Ball", "Burn Heal", "Ice Heal", "Cheer Up", "Full Heal", "Sitrus Berry"],
         "wild_area": "Lava Fields",
         "inn": 350,
@@ -560,7 +560,7 @@ TOWNS = {
     "Frostholm": {
         "desc": "A frozen city where ice never melts.",
         "connections": ["Stonepeak", "Ashveil", "Shadowmere"],
-        "gym": {"leader": "Blizara", "badge": "Frost Badge", "quote": "Colder than death itself!", "team": [("Iceling", 30), ("Sparkit", 28), ("Glacivore", 33)]},
+        "gym": {"leader": "Blizara", "badge": "Frost Badge", "type": "ice", "quote": "Colder than death itself!", "team": [("Iceling", 30), ("Sparkit", 28), ("Glacivore", 33)]},
         "shop": ["Super Potion", "Great Ball", "Ultra Ball", "Revive", "Elixir", "Lum Berry"],
         "wild_area": "Glacial Grotto",
         "inn": 400,
@@ -568,7 +568,7 @@ TOWNS = {
     "Mistveil": {
         "desc": "A quiet town surrounded by mysterious purple mist.",
         "connections": ["Frostholm", "Shadowmere"],
-        "gym": {"leader": "Myra", "badge": "Mystic Badge", "quote": "The mind is mightier than muscle!", "team": [("Psychling", 34), ("Venomfang", 33), ("Mindstrike", 36)]},
+        "gym": {"leader": "Myra", "badge": "Mystic Badge", "type": "psychic", "quote": "The mind is mightier than muscle!", "team": [("Psychling", 34), ("Venomfang", 33), ("Mindstrike", 36)]},
         "shop": ["Hyper Potion", "Ultra Ball", "Full Heal", "Awakening", "Ice Heal", "Revive", "Lum Berry"],
         "wild_area": "Mystic Meadow",
         "inn": 500,
@@ -576,7 +576,7 @@ TOWNS = {
     "Shadowmere": {
         "desc": "A dark city of mystery and ghosts.",
         "connections": ["Mistveil", "Dragonspire"],
-        "gym": {"leader": "Umbra", "badge": "Shadow Badge", "quote": "Darkness consumes all light!", "team": [("Ghostlet", 38), ("Toxidra", 40), ("Spectrex", 42)]},
+        "gym": {"leader": "Umbra", "badge": "Shadow Badge", "type": "ghost", "quote": "Darkness consumes all light!", "team": [("Ghostlet", 38), ("Toxidra", 40), ("Spectrex", 42)]},
         "shop": ["Full Restore", "Ultra Ball", "Revive", "Max Revive", "Lum Berry"],
         "wild_area": "Shadow Ruins",
         "inn": 600,
@@ -584,7 +584,7 @@ TOWNS = {
     "Dragonspire": {
         "desc": "A city built into a colossal dragon skeleton. The final frontier.",
         "connections": ["Shadowmere", "Champion Road"],
-        "gym": {"leader": "Draven", "badge": "Dragon Badge", "quote": "Dragons bow to no trainer... except me!", "team": [("Drakling", 44), ("Drakonis", 46), ("Stormcrest", 45), ("Wyrmax", 48)]},
+        "gym": {"leader": "Draven", "badge": "Dragon Badge", "type": "dragon", "quote": "Dragons bow to no trainer... except me!", "team": [("Drakling", 44), ("Drakonis", 46), ("Stormcrest", 45), ("Wyrmax", 48)]},
         "shop": ["Full Restore", "Ultra Ball", "Max Revive", "Max Elixir", "X Attack", "X Defense", "Lum Berry", "Sitrus Berry", "Life Orb", "Choice Band", "Leftovers", "Shell Bell", "Scope Lens"],
         "wild_area": "Dragon Den",
         "inn": 800,
