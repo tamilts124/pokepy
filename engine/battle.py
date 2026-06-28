@@ -956,6 +956,10 @@ class BattleSummary:
         self.turns             = 0
         self.items_used        = 0
         self.switches          = 0
+        self.moves_used        = 0   # total damaging moves fired
+        self.moves_super       = 0   # super-effective hits
+        self.moves_resisted    = 0   # not-very-effective or immune hits
+        self.enemy_types       = []  # foe's types (set once, used for tip generation)
 
     def show(self, force=False):
         """Only display summary if the battle lasted more than 1 turn (or forced for trainer/gym battles)."""
@@ -969,6 +973,16 @@ class BattleSummary:
             print(f"  Items used   : {C.YELLOW}{self.items_used}{C.RESET}")
         if self.switches:
             print(f"  Switches     : {C.CYAN}{self.switches}{C.RESET}")
+        # Move-efficiency tip
+        if self.moves_used > 0:
+            if self.moves_super > 0 and self.moves_resisted == 0:
+                print(f"  {C.GREEN}💡 Tip: Great type coverage — your moves were super effective!{C.RESET}")
+            elif self.moves_resisted > 0 and self.moves_super == 0:
+                _type_str = "/".join(self.enemy_types) if self.enemy_types else "the foe"
+                print(f"  {C.YELLOW}💡 Tip: Your moves were often resisted by {_type_str}-types. "
+                      f"Try a creature with better type coverage.{C.RESET}")
+            elif self.moves_super > 0 and self.moves_resisted > 0:
+                print(f"  {C.CYAN}💡 Tip: Mixed effectiveness — some moves hit hard, others were resisted.{C.RESET}")
 
 
 # ─────────────────────────────────────────────
@@ -997,8 +1011,10 @@ def run_battle(player_c, enemy_c, inventory, team,
     reset_battle_log()
 
     summary = BattleSummary()
+    summary.enemy_types = list(enemy_c.types)   # capture foe type(s) for tip generation
 
     # Assign display tags so messages say "Your Flambit" vs "Wild Flambit" (or "Foe Flambit")
+
     player_c._battle_tag = "Your"
     enemy_c._battle_tag  = "Wild" if wild else "Foe"
     player_c.reset_stages()
@@ -1098,9 +1114,23 @@ def run_battle(player_c, enemy_c, inventory, team,
 
                 hp_before = enemy_c.hp
                 player_attack(player_c, enemy_c, move_name, boosts, weather)
-                summary.player_dmg_dealt += max(0, hp_before - enemy_c.hp)
+                _dmg_dealt = max(0, hp_before - enemy_c.hp)
+                summary.player_dmg_dealt += _dmg_dealt
                 _recap["player_move"] = move_name
-                _recap["player_dmg"]  = max(0, hp_before - enemy_c.hp)
+                _recap["player_dmg"]  = _dmg_dealt
+                # Track move type-effectiveness for post-battle tip
+                _move_type = MOVES.get(move_name, {}).get("type", "")
+                if _move_type:
+                    from data.creatures import TYPE_CHART as _TC
+                    _eff = 1.0
+                    for _t in enemy_c.types:
+                        _eff *= _TC.get(_move_type, {}).get(_t, 1.0)
+                    if MOVES.get(move_name, {}).get("power", 0) > 0:
+                        summary.moves_used += 1
+                        if _eff >= 2.0:
+                            summary.moves_super += 1
+                        elif _eff < 1.0:
+                            summary.moves_resisted += 1
                 took_turn = True
                 fought    = True
 
@@ -1108,6 +1138,7 @@ def run_battle(player_c, enemy_c, inventory, team,
         elif choice == 1:
             usable = {k: v for k, v in inventory.items()
                       if v > 0 and ITEMS.get(k, {}).get("type") in
+
                       ("heal", "cure", "revive", "capture", "pp", "boost")}
 
             if not usable:

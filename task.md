@@ -440,11 +440,25 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ## New tasks — todo
 
-- [ ] **Move-efficiency tips in post-battle summary** — status: todo
-  - The post-battle summary shows aggregate damage dealt/taken but gives no qualitative hint.
-    If the player used 0 super-effective moves the whole fight, or if the foe resisted every
-    move they used, add a single-line tip (e.g. "Tip: Flamclaw's Fire moves were resisted —
-    try a creature with coverage moves next time."). Low-friction, opt-in feel.
+## Session 8 — Resume from mid-task cutoff (2026-06)
+
+- [x] **Move-efficiency tips in post-battle summary** — status: done
+  - Previous session had added `moves_used`, `moves_super`, `moves_resisted`, `enemy_types`
+    fields to `BattleSummary` and wired the tip text into `show()`, but **never populated
+    the counters** — they stayed zero every battle so tips never appeared.
+  - This session completed the wiring: set `summary.enemy_types = list(enemy_c.types)` right
+    after `summary = BattleSummary()` at battle start; then at the `player_attack` call site,
+    look up the move's type via `MOVES.get(move_name, {}).get("type", "")`, compute
+    effectiveness against `enemy_c.types` using `TYPE_CHART` (same logic as `type_hint()`),
+    and only count moves with `power > 0` (excluding status moves like Growl).
+  - Three tip tiers: ✅ green "Great type coverage!" if super > 0 and resisted == 0;
+    ⚠ yellow "moves were resisted — try better coverage" if resisted > 0 and super == 0
+    (includes the enemy type string e.g. "rock/steel-types"); 💡 cyan "Mixed effectiveness"
+    if both super and resisted occurred. No tip shown if no damaging moves were used.
+  - Verified: 10 tests passed — field init, all three branch conditions, TYPE_CHART lowercased
+    key checks (water vs fire = 2x, normal vs ghost = 0x immune, fire vs rock resisted),
+    counter tracking with real moves from MOVES dict (Water Gun counted as super vs fire,
+    status move correctly excluded), source-level presence of all three counter increments.
 
 - [ ] **Creature glossary / lore entries** — status: todo
   - Each creature species already has a short `desc` in creatures.py used only by the Pokédex
