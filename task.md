@@ -89,6 +89,19 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
   - Verified via `py_compile` and a direct call to `_show_pokedex_entry()` for both the
     caught and seen-only states (confirmed correct branch content for each).
 
-- [ ] **Rival rematch / extended post-game** — status: todo
-  - Now that Elite Four rematches exist, consider letting the rival also offer rematches at scaled
-    levels post-Champion, separate from the one-time scripted 5-encounter story.
+- [x] **Rival rematch / extended post-game** — status: done
+  - Added `run_rival_rematch()` in engine/rival.py: a repeatable post-game battle against the rival's
+    final-encounter team, scaled the same way as the Elite Four rematch (`max(70, lv + 20)` per
+    creature). Available from the Champion Road town menu as "⚡  Rival Rematch (<name>)" once
+    `is_champion` is True and a story rival encounter isn't currently pending in that town (falls
+    back correctly behind any still-pending scripted encounter). Updates the player/rival win-loss
+    score and grants ₽2000 on a win, but does not touch `battles_done` or re-fire story achievements
+    — it's purely a repeatable post-game fight, separate from the one-time 5-encounter arc.
+  - Verified via `py_compile`, a scaling-logic check (confirmed all 6 rematch-team members land at
+    70+), and a direct test of the town-menu option-building logic (confirms the option appears
+    once champion, and correctly defers to a still-pending story encounter when one exists).
+
+- [ ] **Battle log / replay** — status: todo
+  - Let the player view a short scrollback of the last few battle messages (or a post-battle
+    turn-by-turn replay) — currently messages scroll past quickly with `slow_print` and there's no
+    way to review what just happened beyond the existing end-of-battle summary.

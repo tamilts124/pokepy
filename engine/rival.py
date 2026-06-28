@@ -377,3 +377,102 @@ def trigger_post_elite_rival(game):
     final_enc = next((e for e in RIVAL_ENCOUNTERS if e["id"] == 4), None)
     if final_enc and 4 not in game.rival.battles_done:
         run_rival_encounter(game, final_enc)
+
+
+# ─────────────────────────────────────────────────────────
+#  RIVAL REMATCH  (post-game, repeatable)
+# ─────────────────────────────────────────────────────────
+REMATCH_INTRO = [
+    "Back already? Good — I've been training.",
+    "Don't expect the same team you beat before, {player}.",
+    "Let's see if Champion really means something.",
+]
+REMATCH_WIN_LINES = [
+    "Still got it, huh.",
+    "Fine. I'll come back stronger. Again.",
+]
+REMATCH_LOSE_LINES = [
+    "Ha! Even Champions slip up sometimes.",
+    "Get back here when you've trained more.",
+]
+
+def run_rival_rematch(game):
+    """
+    Repeatable post-game rival battle, available once game.is_champion is True.
+    Scales the rival's final-encounter team up to lv 70+ (mirrors the Elite Four
+    rematch scaling) and updates the win/loss score, but does NOT touch
+    battles_done or re-fire achievements tied to the story encounters.
+    """
+    rival = getattr(game, "rival", None)
+    if rival is None or rival.starter is None:
+        slow_print(f"  {C.GRAY}No rival to battle yet.{C.RESET}")
+        press_enter()
+        return "skipped"
+
+    clear()
+    banner(f"  ★  RIVAL REMATCH — {rival.name.upper()}  ★  ", C.MAGENTA)
+    print(RIVAL_ART_PHASES["final"])
+
+    score_tag = (f"  {C.YELLOW}[You {rival.player_wins}–{rival.rival_wins} "
+                 f"{rival.name}]{C.RESET}")
+    slow_print(score_tag)
+    print()
+
+    for line in REMATCH_INTRO:
+        slow_print(f"  {C.BOLD}{rival.name}{C.RESET}: «{_fmt(line, game.player_name, rival)}»")
+        time.sleep(0.2)
+    press_enter()
+
+    base_team = rival_team_for_encounter(rival.starter, 4, rival.rival_wins)
+    rematch_team = [(name, max(70, lv + 20)) for name, lv in base_team]
+
+    alive = [c for c in game.team if c.is_alive()]
+    if not alive:
+        slow_print(f"  {C.RED}All your creatures fainted! Visit an Inn first.{C.RESET}")
+        press_enter()
+        return "skipped"
+
+    from ui.display import menu, hp_bar
+    opts = [f"{c.name} Lv.{c.level}  {hp_bar(c.hp, c.max_hp, 12)}" for c in alive]
+    idx  = menu("Lead with which creature?", opts)
+    player_c = alive[idx]
+
+    battle_result = "win"
+    for cname, lv in rematch_team:
+        enemy = Creature(cname, lv, is_player=False)
+        result, obj = run_battle(player_c, enemy, game.inventory,
+                                 game.team, wild=False,
+                                 trainer_name=rival.name)
+        if result == "win":
+            game.steps += 1
+            game.award_exp(player_c, enemy)
+            alive_after = [c for c in game.team if c.is_alive()]
+            if alive_after and not player_c.is_alive():
+                player_c = alive_after[0]
+        elif result == "lose":
+            battle_result = "lose"
+            break
+
+    clear()
+    banner(f"  ★  RIVAL REMATCH — {rival.name.upper()}  ★  ", C.MAGENTA)
+    print(RIVAL_ART_PHASES["final"])
+
+    if battle_result == "win":
+        rival.player_wins += 1
+        game.earn_money(2000)
+        for line in REMATCH_WIN_LINES:
+            slow_print(f"  {C.BOLD}{rival.name}{C.RESET}: «{_fmt(line, game.player_name, rival)}»")
+            time.sleep(0.2)
+    else:
+        rival.rival_wins += 1
+        slow_print(f"\n  {C.RED}You lost to {rival.name}...{C.RESET}")
+        for line in REMATCH_LOSE_LINES:
+            slow_print(f"  {C.BOLD}{rival.name}{C.RESET}: «{_fmt(line, game.player_name, rival)}»")
+            time.sleep(0.2)
+
+    print()
+    slow_print(f"  {C.YELLOW}[Score: You {rival.player_wins}–{rival.rival_wins} {rival.name}]{C.RESET}")
+    press_enter()
+
+    game.save()
+    return battle_result

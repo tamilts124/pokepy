@@ -1701,6 +1701,9 @@ class Game:
             pending_enc = self.rival.next_encounter(len(self.badges))
             if pending_enc and pending_enc["trigger_town"] == self.town:
                 opts.append(f"⚡  Rival Battle ({self.rival.name})")
+            elif (getattr(self, 'is_champion', False) and self.town == "Champion Road"
+                  and getattr(self.rival, 'starter', None)):
+                opts.append(f"⚡  Rival Rematch ({self.rival.name})")
             if self.town in MOVE_TUTORS:
                 opts.append("🎓  Move Tutor")
 
@@ -1738,6 +1741,9 @@ class Game:
                 pending_enc = self.rival.next_encounter(len(self.badges))
                 if pending_enc:
                     run_rival_encounter(self, pending_enc)
+            elif label.startswith("Rival Rematch"):
+                from engine.rival import run_rival_rematch
+                run_rival_rematch(self)
             elif label == "Move Tutor":
                 self.visit_move_tutor(self.town)
             elif label.startswith("Travel to"):
