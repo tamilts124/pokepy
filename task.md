@@ -851,10 +851,26 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     ceil(7/2)=4), status still poisoned, -₽150; Cancel → no HP/status/money change. Full
     16-script regression suite passes; `py_compile` clean.
 
-- [ ] **Wild encounter level caps by badge count (hard cap)** — status: todo
-  - Currently wild levels scale up with badges (badge_bonus), which is good. But there's no
-    hard upper cap, so a player with 7 badges in Greenpath (a starter area) could theoretically
-    see Lv.30+ wilds where the base range is Lv.3–8. Add a per-area level cap that clamps
-    the badge-boosted level at 2× the area's base `hi` range, so early areas stay catchable
-    even late-game (important for Pokédex completion without trivial instant-KOs).
+- [x] **Wild encounter level caps by badge count (hard cap)** — status: done
+  - Added `capped_wild_level(lo, hi, badge_bonus=0)` to `engine/core.py`: rolls the same
+    `[lo+bonus, hi+bonus]` range as before, but clamps both ends at `hi * 2` (the area's base
+    `hi` doubled) before rolling, so a maxed-out badge_bonus on an early/low-`hi` area pins the
+    level at the cap instead of overshooting it. Zero/low bonus behaves identically to the old
+    plain `randint(lo, hi)` — this only ever pulls levels *down*, never changes them upward.
+  - Replaced every raw `random.randint(lo + badge_bonus, hi + badge_bonus)` wild-level roll with
+    a call to the shared helper: `random_wild()` in `engine/core.py` (the main per-area wild
+    pool), plus all 4 matching call sites in `main.py` — the night-time ghost pool override and
+    seasonal-bonus pool inside `explore()`, the fishing pool in `go_fishing()`, and the grotto
+    creature pool in `explore_grotto()`. Random-trainer/gym/rival team level scaling
+    (`lv + badge_bonus` on a *fixed* level, not a range) is a different mechanic and was
+    deliberately left untouched — there's no "base hi" to overshoot there.
+  - Verified via `_test_wild_level_cap.py` (9 assertions): zero-bonus range unchanged,
+    moderate bonus shifts the range up uncapped, max bonus (15, from 7 badges) on a Lv.3-8 area
+    pins at the 16 cap, a single-level pool (lo==hi) never crashes under an extreme bonus,
+    a late-game area (hi=48) is correctly left alone since 48+15=63 is still under its 96 cap,
+    `random_wild()` was hammered against the real `WILD_AREAS` entry with the smallest base
+    `hi` (Dusty Cave, hi=7) at max badge_bonus and never exceeded the 14-level cap, all 4
+    `main.py` call sites confirmed migrated off the raw formula, and the unrelated trainer-team
+    scaling line confirmed untouched. Full 17-script regression suite passes; `py_compile`
+    clean across the whole repo.
 

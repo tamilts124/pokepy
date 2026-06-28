@@ -551,16 +551,30 @@ def roll_held_item(name, pity_boost=1.0):
     return None
 
 
+def capped_wild_level(lo, hi, badge_bonus=0):
+    """Random level in [lo, hi] shifted up by badge_bonus, hard-capped at
+    2x the area's base `hi` so early areas stay catchable even at a high
+    badge count (important for Pokedex completion without trivial
+    instant-KOs)."""
+    cap = hi * 2
+    boosted_lo = min(lo + badge_bonus, cap)
+    boosted_hi = min(hi + badge_bonus, cap)
+    if boosted_lo > boosted_hi:
+        boosted_lo = boosted_hi
+    return random.randint(boosted_lo, boosted_hi)
+
+
 def random_wild(area_name, badge_bonus=0):
     pool = WILD_AREAS.get(area_name, [])
     if not pool:
         return None
     name, lo, hi = random.choice(pool)
-    level = random.randint(lo + badge_bonus, hi + badge_bonus)
+    level = capped_wild_level(lo, hi, badge_bonus)
     wild = Creature(name, level, is_player=False)
     # Roll for a held item from this creature's pool
     wild.held_item = roll_held_item(name)
     return wild
+
 
 
 # ─────────────────────────────────────────────

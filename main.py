@@ -16,7 +16,8 @@ except Exception:
     pass
 
 from engine.core    import (Creature, save_game, load_game, list_save_slots, random_wild,
-                             roll_held_item, PITY_THRESHOLD, PITY_MULT_PER_TIER, SHINY_CHANCE)
+                             roll_held_item, PITY_THRESHOLD, PITY_MULT_PER_TIER, SHINY_CHANCE,
+                             capped_wild_level)
 
 from data.creatures import (CREATURES, ITEMS, TOWNS, WILD_AREAS,
                              ELITE_FOUR, REQUIRED_BADGES, RANDOM_TRAINERS,
@@ -1968,14 +1969,14 @@ class Game:
 
                     if wild_pool_override:
                         name, lo, hi = random.choice(wild_pool_override)
-                        lv = random.randint(lo + badge_bonus, hi + badge_bonus)
+                        lv = capped_wild_level(lo, hi, badge_bonus)
                         wild = Creature(name, lv, is_player=False)
                         wild.held_item = self._roll_held_item_with_pity(name)
                         self._apply_shiny_roll(wild)
                     elif seasonal_extras and random.random() < 0.30:
                         # 30% chance to pull from the seasonal bonus pool
                         name, lo, hi = random.choice(seasonal_extras)
-                        lv = random.randint(lo + badge_bonus, hi + badge_bonus)
+                        lv = capped_wild_level(lo, hi, badge_bonus)
                         wild = Creature(name, lv, is_player=False)
                         wild.held_item = self._roll_held_item_with_pity(name)
                         self._apply_shiny_roll(wild)
@@ -2223,7 +2224,7 @@ class Game:
             else:
                 # A bite!
                 name, lo, hi = random.choice(fish_pool)
-                lv = random.randint(lo + badge_bonus, hi + badge_bonus)
+                lv = capped_wild_level(lo, hi, badge_bonus)
                 wild = Creature(name, lv, is_player=False)
                 wild.held_item = self._roll_held_item_with_pity(name)
                 self._apply_shiny_roll(wild)
@@ -2347,7 +2348,7 @@ class Game:
 
             # Encounter
             name, lo, hi = random.choice(creature_pool)
-            lv = random.randint(lo + badge_bonus, hi + badge_bonus)
+            lv = capped_wild_level(lo, hi, badge_bonus)
             wild = Creature(name, lv, is_player=False)
             wild.held_item = self._roll_held_item_with_pity(name)
             self._apply_shiny_roll(wild)
