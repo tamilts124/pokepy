@@ -1123,12 +1123,24 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     main detail card. This makes it much easier to evaluate whether a relearn or tutor move
     is worth taking without having to open the in-battle fight menu to check.
 
-- [ ] **World map: show gym badge status on town labels** — status: todo
+- [x] **World map: show gym badge status on town labels** — status: done (was already implemented)
   - notes: The world map already highlights the current town with a `►` marker and colors
-    towns with gyms differently. Extend it so each gym town label shows a small badge marker
-    (e.g. `✓` green / `✗` gray) next to the town name indicating whether its badge has been
-    earned. Players would be able to see their progression across the whole map at a glance
-    rather than needing to open the Badges screen separately.
+    towns with gyms differently. Verified the badge-status extension was already present
+    in `ui/display.py`'s `show_world_map()`: every gym town's label carries a `[v]` (green,
+    earned) or `[n]` (gray, badge number not yet earned) pill, computed live from `badges`
+    passed in via `main.py`'s `show_world_map(self.town, self.badges)`. Legend at the bottom
+    explains the `►`/`v`/`+`/`o`/`*` markers and the "badge earned" pill meaning.
+  - Verified: wrote `_test_worldmap_badges.py` (3 assertions) which renders the map with no
+    badges (confirms numbered `[n]` pills show) and with one badge earned (confirms that
+    town's pill flips to `[v]`), plus a legend-text check. Full 19-script regression suite
+    passes; all 6 core files compile clean.
+  - Picked up from a previous session that had flagged this `todo` and then discovered
+    mid-investigation that the feature already existed (carried over from the same work
+    that implemented "Town map: highlight current location" earlier in the project). This
+    session re-verified independently, fixed a tooling mistake from last time (an empty
+    `_test_worldmap_badges2.py` caused by passing an unsupported `description` param to
+    `create_file` — note: this connector's `create_file` only accepts `path`/`content`),
+    consolidated into a single properly-named test file, and flipped the task to done.
 
 - [x] **Trainer Card: win/loss stats per trainer type** — status: done
   - notes: Added `gym_wins`, `gym_losses`, `e4_attempts`, `e4_clears` counters to `Game`,
