@@ -115,11 +115,10 @@ class Game:
         for etype, val in events:
             if etype == "levelup":
                 slow_print(f"  {C.GREEN}★  {creature.name} grew to Lv.{val}!{C.RESET}")
-                # Achievement: battle100
-                self._check_achievement("battle100")
             elif etype == "newmove":
                 slow_print(f"  {C.CYAN}❆  {creature.name} learned {val}!{C.RESET}")
             elif etype == "movefull":
+
                 new_move = val
                 mv = MOVE_DATA[new_move]
                 slow_print(f"\n  {C.YELLOW}★  {creature.name} wants to learn "
@@ -263,8 +262,11 @@ class Game:
         save_game(self.player_name, self.town, self.team,
                   self.inventory, self.badges, self.money,
                   self.steps, slot=self.save_slot,
-                  rival=getattr(self, 'rival', None))
+                  rival=getattr(self, 'rival', None),
+                  achievements=getattr(self, 'achievements', []),
+                  season=getattr(self, 'season', 'Spring'))
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
+
 
     # ── INN ────────────────────────────────────
     def visit_inn(self, cost):
@@ -1467,8 +1469,12 @@ def main():
         g.badges      = saved["badges"]
         g.money       = saved["money"]
         g.steps       = saved.get("steps", 0)
+        g.achievements = saved.get("achievements", [])
+        g.season      = saved.get("season", "Spring")
         # Load rival state
         from engine.rival import RivalState
+        rival_data = saved.get("rival")
+
         rival_data = saved.get("rival")
         if rival_data:
             g.rival = RivalState.from_dict(rival_data)
