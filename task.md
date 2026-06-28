@@ -1163,8 +1163,7 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     Fixed `core.py` first, then finished the two missing call sites
     (`challenge_elite_four` attempts/clears) and the Trainer Card display lines.
 
-- [ ] **Explorer flavor events: random discoveries while walking** — status: todo
-- [ ] **Explorer flavor events: random discoveries while walking** — status: todo
+- [ ] **Explorer flavor events: random discoveries while walking** — status: in-progress
   - notes: Add a small pool of rare (1-2%) flavor events to `explore()` beyond the existing
     hidden-item finds. Examples: a trainer's lost item you can return for a reward (adds
     money), a weather phenomenon that shifts the current weather for the rest of the session,
