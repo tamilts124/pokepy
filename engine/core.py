@@ -365,20 +365,23 @@ def calc_damage(attacker, defender, move_name, weather=None):
     # Weather multiplier
     w_mult = weather_move_mult(weather, move["type"])
 
-    # Critical hit (~6.25% chance → 1.5× damage)
-    crit = 1.5 if random.randint(1, 16) == 1 else 1.0
-
-    # Random factor
-    rand = random.uniform(0.85, 1.0)
-
-    # Ability multipliers (late import to avoid circular dependency)
+    # Ability multipliers + held-item crit bonus (late import to avoid circular dependency)
     try:
-        from engine.battle import ability_damage_dealt_mult, ability_damage_taken_mult
+        from engine.battle import (ability_damage_dealt_mult, ability_damage_taken_mult,
+                                    held_item_crit_bonus)
         dealt_mult = ability_damage_dealt_mult(attacker, move["type"], weather)
         taken_mult = ability_damage_taken_mult(defender, move["type"], move["power"], weather)
+        crit_denom = 8 if held_item_crit_bonus(attacker) else 16
     except ImportError:
         dealt_mult = 1.0
         taken_mult = 1.0
+        crit_denom = 16
+
+    # Critical hit (~6.25% chance → 1.5x damage; Scope Lens doubles it to ~12.5%)
+    crit = 1.5 if random.randint(1, crit_denom) == 1 else 1.0
+
+    # Random factor
+    rand = random.uniform(0.85, 1.0)
 
     # Burn halves physical damage output only
     if attacker.status == "burn" and category == "physical":

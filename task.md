@@ -531,6 +531,28 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     several rows by hand against `TYPE_CHART` (e.g. Fire row: resists itself/Water/Rock,
     super effective vs Grass/Ice — matches).
 
+- [x] **Bug: Scope Lens held item silently did nothing** — status: done
+  - Found while implementing the type chart (same crit-roll code path). `held_item_crit_bonus()`
+    in `engine/battle.py` was fully implemented and correctly documented — Scope Lens's item
+    `desc` says "Critical hit chance doubled," and the README lists it under held items — but
+    the function was never called from anywhere in the codebase. `calc_damage()` in
+    `engine/core.py` rolled crits with a hardcoded `random.randint(1, 16) == 1`, completely
+    ignoring the holder's item. Net effect: every player who spent ₽2000 on a Scope Lens and
+    equipped it got nothing for it, with no error or indication anything was wrong — pure
+    silent dead weight in a held-item slot.
+  - Fix: wired `held_item_crit_bonus(attacker)` into `calc_damage()`'s existing late-import
+    block (alongside the ability multipliers, to avoid the circular `engine.battle` import),
+    and used its result to pick a crit denominator of 8 (Scope Lens) or 16 (default) for the
+    `random.randint(1, crit_denom) == 1` roll — exactly the 1-in-8 vs 1-in-16 split the
+    function's own docstring already described.
+  - Verified: `_test_scope_lens_fix.py` runs 20,000 damage-calc trials with a seeded RNG both
+    without and with Scope Lens equipped — baseline crit rate landed at ~6.3% (expected
+    ~6.25%), Scope Lens rate at ~12.4% (expected ~12.5%), confirming the doubling now actually
+    happens. `py_compile` clean on both touched files; full existing regression suite
+    (`_test_lore.py`, `_verify_lore_fix.py`, `_test_type_chart.py`) still passes — no
+    behavior change to anything except crit chance for Scope Lens holders.
+
+
 ## New tasks — todo
 
 - [ ] **Friendship / affection system** — status: todo
