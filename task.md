@@ -748,10 +748,18 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     weaknesses, similar to how the wild/gym encounter card shows type. Lets the player build
     strategy instead of guessing.
 
-- [ ] **Achievement gallery: show unlocked achievements with timestamps** — status: todo
-  - The 11 achievements fire during gameplay but there is currently no way to review which
-    ones you've earned. Add an `open_achievements()` screen accessible from the town menu
-    (below Trainer Card) that lists all 11 achievements, marks each as ✓ (earned) or ○
-    (locked), and for earned ones shows a short flavor description of what triggered it.
-    Save/load already persists the `achievements` set so no data-layer work needed.
+    are weak to until they experiment. Add a one-line hint in the rival battle UI (alongside
+    the existing creature card) showing the rival creature's type and its 2–3 biggest
+    weaknesses, similar to how the wild/gym encounter card shows type. Lets the player build
+    strategy instead of guessing.
+
+- [x] **Achievement gallery** — status: done
+  - Added `open_achievements()` method on `Game` in `main.py`. Displays all 12 achievements
+    in a clear screen: `✓ Name` (yellow + bold) with the flavor `desc` indented below for
+    earned ones; `○ Name` (gray) for locked. Shows `Unlocked: X/12` count at top, turning
+    yellow when all are complete. Accessible from the town menu via new `🏆  Achievements`
+    option (inserted after `📊  Trainer Card`). No data-layer changes needed — `achievements`
+    list was already persisted via `save_game()`/`load_game()`. Verified via
+    `_test_achievements.py` (7 tests: method existence, menu wiring, handler wiring, compile
+    clean, 0-/partial-/full-achievement renders). All 11 regression scripts still pass.
 

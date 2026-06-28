@@ -1255,6 +1255,24 @@ class Game:
                 print(f"  {C.GRAY}○  {b}{C.RESET}")
         press_enter()
 
+
+    # ── ACHIEVEMENT GALLERY ─────────────────────────────────
+    def open_achievements(self):
+        clear()
+        section("\U0001f3c6  ACHIEVEMENTS")
+        earned = getattr(self, 'achievements', [])
+        total  = len(ACHIEVEMENTS)
+        count  = sum(1 for k in ACHIEVEMENTS if k in earned)
+        color  = C.YELLOW if count >= total else C.RESET
+        print(f"  Unlocked: {color}{count}/{total}{C.RESET}\n")
+        for key, ach in ACHIEVEMENTS.items():
+            if key in earned:
+                print(f"  {C.YELLOW}\u2713  {C.BOLD}{ach['name']}{C.RESET}")
+                print(f"      {C.GRAY}{ach['desc']}{C.RESET}")
+            else:
+                print(f"  {C.GRAY}\u25cb  {ach['name']}{C.RESET}")
+        press_enter()
+
     # ── TRAINER STATS ───────────────────────────
     def open_stats(self):
         clear()
@@ -2279,6 +2297,7 @@ class Game:
                 "📘  Type Chart",
                 "🏅  Badges",
                 "📊  Trainer Card",
+                "🏆  Achievements",
                 "🗺  World Map",
                 "💾  Save Game",
                 "❌  Quit",
@@ -2341,6 +2360,8 @@ class Game:
                 self.open_badges()
             elif label == "Trainer Card":
                 self.open_stats()
+            elif label == "Achievements":
+                self.open_achievements()
             elif label == "World Map":
                 show_world_map(self.town, self.badges)
             elif label == "Save Game":
