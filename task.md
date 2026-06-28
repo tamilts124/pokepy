@@ -717,9 +717,39 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     `main.py` as `show_world_map(self.town, self.badges)`. Feature was complete all along —
     task entry was stale.
 
-## Session 10 new tasks — todo
+## Session 11 — Resume from mid-task cutoff (2026-06)
 
-- [ ] **Held item shop: dedicated held-item vendor** — status: todo
+- [x] **Held item shop: dedicated held-item vendor** — status: done
+  - Previous session had fully implemented `visit_held_item_vendor()` in `main.py` and wired
+    the "🧤 Item Specialist" option into the Dragonspire town menu, but left it uncommitted
+    alongside a duplicate `slow_print` in `reorder_team()` and a spurious blank line injected
+    before `lines = get_town_dialogue` in the "Talk to locals" handler. Both bugs fixed this
+    session before pushing.
+  - Vendor is Dragonspire-exclusive (guarded by `self.town == "Dragonspire"`). Sells all 5
+    combat held items (Life Orb ₽4500, Choice Band ₽3500, Leftovers ₽3000, Shell Bell ₽3500,
+    Scope Lens ₽3500) plus all 7 berries (Lum/Sitrus/Oran + the 4 seasonal berries that are
+    otherwise RNG-only drops — Salac/Petaya/Apicot/Ganlon at ₽2000 each). Each item shows its
+    in-game `desc` and how many the player already owns. Quantity prompt (1–9) before purchase.
+    Correct money is deducted; items land in `self.inventory`.
+  - Verified: `_test_vendor_tutor.py` (10 tests, all pass): method existence, Dragonspire gate,
+    handler wired, all 5 combat items present, all 4 seasonal berries present, COVERAGE_TUTOR
+    dict structure, coverage logic vars, skip-already-known logic, functional 3-pick sim for
+    normal-only team, water-coverage skip for water-type team. Full 12-script regression suite
+    passes. `py_compile` clean.
+
+- [x] **Egg moves / tutor expansion: teach moves based on type** — status: done
+  - Same commit as above (both features were together in the uncommitted diff).
+  - Added `COVERAGE_TUTOR` dict (16 attacker-type → (move_name, cost) entries) at module level
+    near `MOVE_TUTORS`. Modified `visit_move_tutor()`: when `town_name == "Dragonspire"`,
+    computes which attacker types the team can already hit super-effectively (using `TYPE_CHART`
+    against all defender types), then selects up to 3 moves from `COVERAGE_TUTOR` for uncovered
+    types — skipping moves already in the fixed tutor list or already known by any team member.
+    If any coverage moves are found, prints a cyan "I also sense your team could use some
+    coverage moves..." line before showing the expanded menu (fixed 3 + up to 3 dynamic).
+    On subsequent visits with better team coverage, fewer or zero extras are injected.
+  - Verified: same `_test_vendor_tutor.py` tests 6–10.
+
+
   - Currently all held items (Life Orb, Choice Band, Leftovers, etc.) can only be found on
     wild creatures as random drops or given by the player. Add a special vendor NPC in
     Dragonspire (the final pre-Champion town) who sells the full catalogue of held items at

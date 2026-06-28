@@ -74,6 +74,30 @@ MOVE_TUTORS = {
     "Dragonspire": [("Dragon Rage", 2000), ("Earthquake", 2500), ("Swords Dance", 1500)],
 }
 
+# ── Dragonspire coverage tutor pool ──────────────────────
+# Maps attacker type → (move_name, cost). The tutor dynamically selects up to 3
+# moves from this pool covering types the player's team cannot yet hit super-effectively.
+# Only high-power, reliable coverage picks are listed.
+COVERAGE_TUTOR = {
+    "water":    ("Surf",         2000),
+    "fire":     ("Flamethrower", 2000),
+    "electric": ("Thunderbolt",  2000),
+    "ice":      ("Ice Beam",     2000),
+    "psychic":  ("Psychic",      2000),
+    "ghost":    ("Shadow Ball",  2000),
+    "ground":   ("Earthquake",   2500),  # also in fixed list; won't duplicate
+    "steel":    ("Iron Tail",    2200),
+    "dark":     ("Crunch",       1800),
+    "dragon":   ("Dragon Rage",  2000),  # also in fixed list; won't duplicate
+    "rock":     ("Rock Throw",   1200),
+    "flying":   ("Wing Attack",  1500),
+    "poison":   ("Acid",         1200),
+    "grass":    ("Solar Beam",   2200),
+    "bug":      ("Leech Life",   1400),
+    "normal":   ("Headbutt",     1000),
+}
+
+
 # ── Random trainer identities ────────────────────────────
 # Each title pairs with a small fixed pool of first names, so a random encounter
 # resolves to a stable identity (e.g. "Hiker Earl") instead of an anonymous title.
@@ -1444,10 +1468,49 @@ class Game:
 
     # ── MOVE TUTOR ──────────────────────────────
     def visit_move_tutor(self, town_name):
-        from data.creatures import MOVES as MOVE_DATA
-        tutors = MOVE_TUTORS.get(town_name, [])
+        from data.creatures import MOVES as MOVE_DATA, TYPE_CHART
+        tutors = list(MOVE_TUTORS.get(town_name, []))
         if not tutors:
             slow_print("  No move tutor here."); press_enter(); return
+
+        # ── Dragonspire: inject up to 3 type-coverage suggestions ──
+        if town_name == "Dragonspire":
+            # Collect all move types the team can already hit super-effectively
+            covered_types = set()
+            all_def_types = list(TYPE_CHART.keys())
+            for c in self.team:
+                for mv_name in c.moves:
+                    mv_data = MOVE_DATA.get(mv_name, {})
+                    atk_type = mv_data.get("type", "")
+                    if not atk_type:
+                        continue
+                    for def_type in all_def_types:
+                        if TYPE_CHART.get(atk_type, {}).get(def_type, 1.0) >= 2.0:
+                            covered_types.add(atk_type)
+                            break
+            # Collect move names already in the fixed tutor list
+            fixed_moves = {m for m, _ in tutors}
+            # Collect move names any team member already knows
+            team_known = set()
+            for c in self.team:
+                team_known.update(c.moves)
+            # Pick coverage candidates: types not yet covered, up to 3
+            coverage_added = []
+            for atk_type, (mv_name, cost) in COVERAGE_TUTOR.items():
+                if len(coverage_added) >= 3:
+                    break
+                if atk_type in covered_types:
+                    continue  # team already has this coverage
+                if mv_name in fixed_moves or mv_name in team_known:
+                    continue  # already offered or already known
+                if mv_name not in MOVE_DATA:
+                    continue
+                coverage_added.append((mv_name, cost, atk_type))
+            if coverage_added:
+                slow_print(f"  {C.CYAN}\"I also sense your team could use some coverage moves...\"{C.RESET}")
+                for mv_name, cost, atk_type in coverage_added:
+                    tutors.append((mv_name, cost))
+
         clear()
         section(f"🎓  MOVE TUTOR  —  {town_name}")
         slow_print(f"  {C.GRAY}\"I can teach your creatures powerful techniques!\"{C.RESET}\n")
@@ -1464,6 +1527,7 @@ class Game:
 
         move_name, cost = tutors[tc]
         mv = MOVE_DATA[move_name]
+
         if self.money < cost:
             slow_print(f"  {C.RED}Not enough money! Need ₽{cost}.{C.RESET}")
             press_enter(); return
@@ -1498,6 +1562,76 @@ class Game:
                 slow_print(f"  {C.GREEN}{target.name} forgot {old} and learned {move_name}!{C.RESET}")
         press_enter()
 
+    # ── HELD ITEM VENDOR (Dragonspire only) ──────────────────
+    def visit_held_item_vendor(self):
+        """Special NPC in Dragonspire who sells the full held-item catalogue."""
+        from data.creatures import ITEMS
+        # Full catalogue: combat held items + all berries (including seasonal ones
+        # not sold anywhere else — this is the one guaranteed source)
+        VENDOR_STOCK = [
+            # Combat held items
+            ("Life Orb",     4500),
+            ("Choice Band",  3500),
+            ("Leftovers",    3000),
+            ("Shell Bell",   3500),
+            ("Scope Lens",   3500),
+            # Standard berries
+            ("Lum Berry",    1500),
+            ("Sitrus Berry", 1200),
+            ("Oran Berry",    600),
+            # Seasonal berries — exclusive to this vendor; not in regular shops
+            ("Salac Berry",  2000),
+            ("Petaya Berry", 2000),
+            ("Apicot Berry", 2000),
+            ("Ganlon Berry", 2000),
+        ]
+        while True:
+            clear()
+            section("🧤  ITEM SPECIALIST  —  Dragonspire")
+            slow_print(f"  {C.GRAY}\"Every held item a champion could want — "
+                       f"and a few the seasons keep hidden.\"{C.RESET}\n")
+            slow_print(f"  {C.YELLOW}Your money: {chr(8381)}{self.money}{C.RESET}\n")
+
+            buy_opts = []
+            for item_name, price in VENDOR_STOCK:
+                item = ITEMS[item_name]
+                owned = self.inventory.get(item_name, 0)
+                owned_str = f"  {C.GRAY}(have {owned}){C.RESET}" if owned else ""
+                buy_opts.append(
+                    f"{item_name:<14} {C.YELLOW}{chr(8381)}{price}{C.RESET}  "
+                    f"{C.GRAY}{item['desc']}{C.RESET}{owned_str}"
+                )
+            buy_opts.append("Leave")
+
+            choice = menu("Buy which item?", buy_opts)
+            if choice == len(VENDOR_STOCK):
+                break
+            item_name, price = VENDOR_STOCK[choice]
+            if self.money < price:
+                slow_print(f"  {C.RED}Not enough money! Need {chr(8381)}{price}.{C.RESET}")
+                press_enter()
+                continue
+            # Ask quantity
+            slow_print(f"  How many {item_name} to buy? (1-9, 0 to cancel)")
+            raw = input("  > ").strip()
+            try:
+                qty = int(raw)
+            except ValueError:
+                qty = 0
+            if qty <= 0:
+                continue
+            qty = min(qty, 9)
+            total = price * qty
+            if self.money < total:
+                slow_print(f"  {C.RED}Not enough money for {qty}! "
+                           f"Need {chr(8381)}{total} (have {chr(8381)}{self.money}).{C.RESET}")
+                press_enter()
+                continue
+            self.money -= total
+            self.inventory[item_name] = self.inventory.get(item_name, 0) + qty
+            slow_print(f"  {C.GREEN}Bought {qty}x {item_name} for {chr(8381)}{total}!{C.RESET}")
+            press_enter()
+
     # ── REORDER TEAM (legacy, kept for internal use) ──────────
     def reorder_team(self):
         """Let player drag-reorder their team."""
@@ -1505,6 +1639,7 @@ class Game:
         section("🔀  REORDER TEAM")
         slow_print(f"  {C.GRAY}Pick a creature to move, then pick its new position.{C.RESET}\n")
         while True:
+
             opts = [f"{i+1}. {c.name} Lv.{c.level}  {hp_bar(c.hp, c.max_hp, 12)}"
                     for i, c in enumerate(self.team)]
             opts.append("← Done")
@@ -2286,8 +2421,11 @@ class Game:
                 opts.append(f"⚡  Rival Rematch ({self.rival.name})")
             if self.town in MOVE_TUTORS:
                 opts.append("🎓  Move Tutor")
+            if self.town == "Dragonspire":
+                opts.append("🧤  Item Specialist")
             if NPC_DIALOGUE.get(self.town):
                 opts.append("💬  Talk to locals")
+
 
             opts += [f"🗺  Travel to {c}" for c in town_data["connections"]]
             opts += [
@@ -2330,6 +2468,8 @@ class Game:
                 run_rival_rematch(self)
             elif label == "Move Tutor":
                 self.visit_move_tutor(self.town)
+            elif label == "Item Specialist":
+                self.visit_held_item_vendor()
             elif label == "Talk to locals":
                 lines = get_town_dialogue(self, self.town)
                 clear()
@@ -2340,6 +2480,7 @@ class Game:
                 else:
                     slow_print(f"  {C.GRAY}Nobody seems to want to chat right now.{C.RESET}")
                 press_enter()
+
             elif label.startswith("Travel to"):
                 dest = label.replace("Travel to ", "")
                 slow_print(f"  {C.CYAN}You travel to {dest}...{C.RESET}", 0.02)
