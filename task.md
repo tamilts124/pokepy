@@ -741,17 +741,16 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     suite passes.
 
 
-- [ ] **Rival: show rival's type-resistance weaknesses in battle** — status: todo
-  - When battling the rival, the player has no way to know what types the rival's creatures
-    are weak to until they experiment. Add a one-line hint in the rival battle UI (alongside
-    the existing creature card) showing the rival creature's type and its 2–3 biggest
-    weaknesses, similar to how the wild/gym encounter card shows type. Lets the player build
-    strategy instead of guessing.
-
-    are weak to until they experiment. Add a one-line hint in the rival battle UI (alongside
-    the existing creature card) showing the rival creature's type and its 2–3 biggest
-    weaknesses, similar to how the wild/gym encounter card shows type. Lets the player build
-    strategy instead of guessing.
+- [x] **Trainer battle weakness hints** — status: done
+  - Scope expanded from rival-only to all trainer battles (gym leaders, Elite Four, random
+    trainers, rival) — more useful and no extra complexity. Added a `Weak to:` line in
+    `battle_ui()` in `engine/battle.py`, shown only when `wild=False`. Iterates all 16 game
+    types, computes combined effectiveness against the enemy's type(s) via `TYPE_CHART`, and
+    displays up to 4 weakness types as color-coded `[TYPE]` tags (reusing `TYPE_COLORS` from
+    the existing fight menu) beneath the enemy creature card. Does not appear in wild battles.
+  - Verified: `_test_weakness_hint.py` (7 assertions: py_compile, wild→no hint, trainer→hint
+    present, correct types for Fire, TYPE_CHART agreement, dual-type renders without error,
+    cap at ≤4 types). Full 11-script regression suite passes. `py_compile` clean.
 
 - [x] **Achievement gallery** — status: done
   - Added `open_achievements()` method on `Game` in `main.py`. Displays all 12 achievements

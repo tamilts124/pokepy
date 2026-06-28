@@ -457,6 +457,26 @@ def battle_ui(player_c, enemy_c, wild=True, weather=None, trainer_name=None):
         icon = weather_icons.get(weather, "☁")
         print(f"  {C.CYAN}{icon}  Weather: {weather}{C.RESET}")
     creature_card(enemy_c, prefix=f"  {label} ")
+    # ── Trainer battle only: show weakness hint under enemy card ──
+    if not wild:
+        from data.creatures import TYPE_CHART as _TC
+        # Collect attacker types that deal ≥ 2× to ALL of the enemy's types combined
+        _weaknesses = []
+        _all_types = ["fire", "water", "grass", "electric", "ice", "rock",
+                      "ground", "psychic", "ghost", "poison", "flying",
+                      "dark", "normal", "bug", "dragon", "steel"]
+        for _atk in _all_types:
+            _eff = 1.0
+            for _def in enemy_c.types:
+                _eff *= _TC.get(_atk, {}).get(_def, 1.0)
+            if _eff >= 2.0:
+                _weaknesses.append(_atk)
+        if _weaknesses:
+            _tags = "  ".join(
+                f"{TYPE_COLORS.get(t, C.WHITE)}[{t.upper()}]{C.RESET}"
+                for t in _weaknesses[:4]
+            )
+            print(f"  {C.GRAY}Weak to: {C.RESET}{_tags}")
     print(f"{'─'*30}")
     creature_card(player_c, prefix="  Your ", show_exp=True)
     print(f"{'─'*60}")
