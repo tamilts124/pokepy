@@ -7,6 +7,10 @@ from data.creatures import CREATURES, MOVES, TYPE_CHART, ITEMS, WILD_AREAS
 
 SAVE_FILE = "save.json"
 
+# Shiny encounter probability (1 in 100)
+SHINY_CHANCE = 1 / 100
+
+
 # ─────────────────────────────────────────────
 #  NATURE SYSTEM
 # ─────────────────────────────────────────────
@@ -88,6 +92,8 @@ class Creature:
         self._held_item_used = False   # one-use berry flag
         self._sturdy_used    = False   # Sturdy one-per-battle flag
         self.nickname  = None          # optional player-given nickname (≤10 chars)
+        self.is_shiny  = False         # cosmetic shiny variant (rolled on wild spawn)
+
 
         # Moves: use learned set up to current level
         if moves:
@@ -264,6 +270,8 @@ class Creature:
             "held_item":   self.held_item,
             "nature":      self.nature,
             "nickname":    self.nickname,
+            "is_shiny":    self.is_shiny,
+
         }
 
 
@@ -287,7 +295,9 @@ class Creature:
         c.spd     = c._calc_stat(bs[5], "spd")
         c._held_item_used = False   # always reset on load; re-triggers fresh each battle
         c.nickname    = d.get("nickname")       # None if old save (no nickname)
+        c.is_shiny    = d.get("is_shiny", False)  # False for old saves
         return c
+
 
 
 # ─────────────────────────────────────────────
@@ -395,7 +405,7 @@ def save_file_path(slot=1):
 
 SAVE_VERSION = 2
 
-def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None, item_drought=0):
+def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, shiny_caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None, item_drought=0):
     data = {
         "version":     SAVE_VERSION,
         "player_name": player_name,
@@ -415,6 +425,7 @@ def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1
         "season":      season or "Spring",
         "seen":        sorted(seen or []),
         "caught":      sorted(caught or []),
+        "shiny_caught": sorted(shiny_caught or []),
         "is_champion": bool(is_champion),
         "avatar":      avatar or "♂",
         "visited_towns": sorted(visited_towns or []),
@@ -438,6 +449,7 @@ def load_game(slot=1):
         data.setdefault("season", "Spring")
     data.setdefault("seen", [])
     data.setdefault("caught", [])
+    data.setdefault("shiny_caught", [])
     data.setdefault("is_champion", False)
     data.setdefault("avatar", "♂")
     data.setdefault("visited_towns", [])
@@ -467,6 +479,7 @@ def list_save_slots():
             except Exception:
                 pass
     return slots
+
 
 
 # ─────────────────────────────────────────────

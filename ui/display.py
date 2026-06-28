@@ -110,12 +110,13 @@ def creature_card(c, prefix="", show_exp=False):
     held_str = ""
     if getattr(c, 'held_item', None):
         held_str = f"  {C.YELLOW}[{c.held_item}]{C.RESET}"
-    # Build name string: show nickname (if any) with species in parens
+    # Build name string: show nickname (if any) with species in parens; shiny marker
     nickname = getattr(c, 'nickname', None)
+    shiny_tag = f" {C.YELLOW}✦{C.RESET}" if getattr(c, 'is_shiny', False) else ""
     if nickname:
-        name_str = f"{C.BOLD}{nickname}{C.RESET} {C.GRAY}({c.name}){C.RESET}"
+        name_str = f"{C.BOLD}{nickname}{C.RESET} {C.GRAY}({c.name}){C.RESET}{shiny_tag}"
     else:
-        name_str = f"{C.BOLD}{c.name}{C.RESET}"
+        name_str = f"{C.BOLD}{c.name}{C.RESET}{shiny_tag}"
 
     print(f"{prefix}{name_str} Lv.{c.level}  {types_str}{status_str}{held_str}")
 
@@ -148,7 +149,8 @@ def team_summary(team):
     for i, c in enumerate(team, 1):
         status = f"{C.RED}[FAINTED]{C.RESET}" if not c.is_alive() else ""
         held   = f"  {C.YELLOW}[{c.held_item}]{C.RESET}" if getattr(c, 'held_item', None) else ""
-        print(f"  {i}. {C.BOLD}{c.name}{C.RESET} Lv.{c.level}  "
+        shiny  = f" {C.YELLOW}✦{C.RESET}" if getattr(c, 'is_shiny', False) else ""
+        print(f"  {i}. {C.BOLD}{c.name}{C.RESET}{shiny} Lv.{c.level}  "
               f"{hp_bar(c.hp, c.max_hp, 15)} {status}{held}")
         # EXP bar for alive creatures
         if c.is_alive() and hasattr(c, 'exp') and hasattr(c, 'exp_to_next') and c.exp_to_next > 0:
@@ -157,6 +159,7 @@ def team_summary(team):
             filled = int(ratio * width)
             bar    = "\u25aa" * filled + "\u00b7" * (width - filled)
             print(f"     EXP {C.CYAN}[{bar}]{C.RESET} {c.exp}/{c.exp_to_next}")
+
 
 def menu(title, options, color=C.CYAN):
     """Show a numbered menu and return validated choice (0-indexed)."""
@@ -170,6 +173,7 @@ def menu(title, options, color=C.CYAN):
             if 0 <= idx < len(options):
                 return idx
         print(f"{C.RED}Invalid choice.{C.RESET}")
+
 
 def confirm(prompt):
     while True:

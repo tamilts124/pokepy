@@ -55,6 +55,8 @@ def _dname(c):
     tag      = getattr(c, '_battle_tag', '')
     nickname = getattr(c, 'nickname', None)
     display  = f"{nickname} ({c.name})" if nickname else c.name
+    if getattr(c, 'is_shiny', False):
+        display = f"✦{display}"
     if tag:
         return f"{tag} {display}"
     return display

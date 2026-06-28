@@ -16,7 +16,8 @@ except Exception:
     pass
 
 from engine.core    import (Creature, save_game, load_game, list_save_slots, random_wild,
-                             roll_held_item, PITY_THRESHOLD, PITY_MULT_PER_TIER)
+                             roll_held_item, PITY_THRESHOLD, PITY_MULT_PER_TIER, SHINY_CHANCE)
+
 from data.creatures import (CREATURES, ITEMS, TOWNS, WILD_AREAS,
                              ELITE_FOUR, REQUIRED_BADGES, RANDOM_TRAINERS,
                              FISH_OLD_ROD, FISH_GOOD_ROD, GROTTOS,
@@ -251,8 +252,10 @@ class Game:
         self._defeated_trainers = set()  # track rematched trainers by (area, name_hash)
         self.seen        = set()         # creature names encountered in the wild
         self.caught      = set()         # creature names successfully captured
+        self.shiny_caught = set()        # creature names caught as shiny variants
         self.is_champion = False         # True once the Elite Four has been beaten at least once
         self.avatar      = "♂"          # trainer avatar symbol chosen at character creation
+
         self.visited_towns = set()       # towns the player has entered at least once
         self.nuzlocke    = False         # if True, fainted creatures are permanently deleted
 
@@ -306,12 +309,14 @@ class Game:
                 if name in self.caught:
                     data = CDEX[name]
                     types_str = "/".join(t.upper() for t in data["type"])
-                    entry_opts.append(f"{C.GREEN}●{C.RESET} {C.BOLD}{name:<14}{C.RESET}  "
+                    shiny_mark = f" {C.YELLOW}✦{C.RESET}" if name in getattr(self, 'shiny_caught', set()) else ""
+                    entry_opts.append(f"{C.GREEN}●{C.RESET} {C.BOLD}{name:<14}{C.RESET}{shiny_mark}  "
                                        f"{C.GRAY}[{types_str}]{C.RESET}")
                 elif name in self.seen:
                     entry_opts.append(f"{C.YELLOW}◐{C.RESET} {name:<14}  {C.GRAY}(seen){C.RESET}")
                 else:
                     entry_opts.append(f"{C.GRAY}○ {'???':<14}  ???{C.RESET}")
+
 
             nav = []
             if page > 0:         nav.append("◀  Prev page")
@@ -338,13 +343,15 @@ class Game:
         from data.creatures import CREATURES as CDEX
         data = CDEX[name]
         caught = name in self.caught
+        is_shiny_caught = name in getattr(self, 'shiny_caught', set())
 
         clear()
         section(f"📖  #{name}")
         types_str = "/".join(t.upper() for t in data["type"])
         slow_print(f"  {C.BOLD}{name}{C.RESET}  {C.GRAY}[{types_str}]{C.RESET}")
         if caught:
-            slow_print(f"  {C.GREEN}● Caught{C.RESET}")
+            shiny_note = f"  {C.YELLOW}✦ Shiny caught!{C.RESET}" if is_shiny_caught else ""
+            slow_print(f"  {C.GREEN}● Caught{C.RESET}{shiny_note}")
         else:
             slow_print(f"  {C.YELLOW}◐ Seen, not yet caught{C.RESET}")
         slow_print(f"  {C.GRAY}{data.get('desc', '')}{C.RESET}\n")
@@ -353,6 +360,7 @@ class Game:
             # Full info once the player actually owns one.
             bs = data["base_stats"]
             stat_names = ["HP", "Attack", "Defense", "Sp. Atk", "Sp. Def", "Speed"]
+
             print(f"  {C.CYAN}Base Stats{C.RESET}")
             for sname, val in zip(stat_names, bs):
                 filled = int((val / 150) * 20)
@@ -471,6 +479,15 @@ class Game:
         else:
             self.item_drought = drought + 1
         return result
+
+    def _apply_shiny_roll(self, wild):
+        """Roll whether a freshly-created wild creature is a shiny variant (1/100).
+        Sets wild.is_shiny and returns True if shiny (caller should print the special message)."""
+        if random.random() < SHINY_CHANCE:
+            wild.is_shiny = True
+            return True
+        return False
+
 
     def award_exp(self, winner, loser):
 
@@ -597,6 +614,7 @@ class Game:
                   season=getattr(self, 'season', 'Spring'),
                   seen=getattr(self, 'seen', set()),
                   caught=getattr(self, 'caught', set()),
+                  shiny_caught=getattr(self, 'shiny_caught', set()),
                   is_champion=getattr(self, 'is_champion', False),
                   avatar=getattr(self, 'avatar', '♂'),
                   visited_towns=getattr(self, 'visited_towns', set()),
@@ -607,6 +625,7 @@ class Game:
                   item_drought=getattr(self, 'item_drought', 0))
 
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
+
 
 
     # ── INN ────────────────────────────────────
@@ -1725,12 +1744,14 @@ class Game:
                         lv = random.randint(lo + badge_bonus, hi + badge_bonus)
                         wild = Creature(name, lv, is_player=False)
                         wild.held_item = self._roll_held_item_with_pity(name)
+                        self._apply_shiny_roll(wild)
                     elif seasonal_extras and random.random() < 0.30:
                         # 30% chance to pull from the seasonal bonus pool
                         name, lo, hi = random.choice(seasonal_extras)
                         lv = random.randint(lo + badge_bonus, hi + badge_bonus)
                         wild = Creature(name, lv, is_player=False)
                         wild.held_item = self._roll_held_item_with_pity(name)
+                        self._apply_shiny_roll(wild)
                         slow_print(f"  {SEASON_COLORS.get(self.season, C.GREEN)}"
                                    f"✦ A {self.season} visitor!{C.RESET}")
                     else:
@@ -1739,12 +1760,18 @@ class Game:
                         if wild:
                             # Override held item with pity-aware roll
                             wild.held_item = self._roll_held_item_with_pity(wild.name)
+                            self._apply_shiny_roll(wild)
 
 
 
                     if wild:
-                        slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
-                                   f"{C.YELLOW} appeared! (Lv.{wild.level}){C.RESET}")
+                        if getattr(wild, 'is_shiny', False):
+                            slow_print(f"\n  {C.YELLOW}✦✦✦ A shiny {C.BOLD}{wild.name}{C.RESET}"
+                                       f"{C.YELLOW} appeared! (Lv.{wild.level}) ✦✦✦{C.RESET}")
+                            slow_print(f"  {C.YELLOW}It sparkles with a brilliant light!{C.RESET}")
+                        else:
+                            slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
+                                       f"{C.YELLOW} appeared! (Lv.{wild.level}){C.RESET}")
                         press_enter()
                         player_c = self._pick_lead(player_c)
                         if player_c is None: break
@@ -1761,18 +1788,23 @@ class Game:
                                 player_c = self._pick_lead(
                                     fainted_name=getattr(player_c, 'nickname', None) or player_c.name)
                                 if player_c is None: break
+
                             clear()
                         elif result == "caught":
                             self._count_battle()
                             captured = obj
                             self.seen.add(captured.name)
                             self.caught.add(captured.name)
+                            if getattr(captured, 'is_shiny', False):
+                                self.shiny_caught.add(captured.name)
+                                slow_print(f"  {C.YELLOW}★✦★  You caught a SHINY {captured.name}! ★✦★{C.RESET}")
                             # If the captured wild was holding an item, give it to the player
                             if captured.held_item:
                                 stolen = captured.held_item
                                 self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
                                 captured.held_item = None
                                 slow_print(f"  {C.YELLOW}★  {captured.name} was holding {stolen}! You got it!{C.RESET}")
+
                             if len(self.team) < 6:
                                 self.team.append(captured)
                                 slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
@@ -1966,15 +1998,22 @@ class Game:
                 lv = random.randint(lo + badge_bonus, hi + badge_bonus)
                 wild = Creature(name, lv, is_player=False)
                 wild.held_item = self._roll_held_item_with_pity(name)
+                self._apply_shiny_roll(wild)
 
-                slow_print(f"  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
-                           f"{C.YELLOW} took the hook! (Lv.{wild.level}){C.RESET}")
+                if getattr(wild, 'is_shiny', False):
+                    slow_print(f"  {C.YELLOW}✦✦✦ A SHINY {C.BOLD}{wild.name}{C.RESET}"
+                               f"{C.YELLOW} took the hook! (Lv.{wild.level}) ✦✦✦{C.RESET}")
+                    slow_print(f"  {C.YELLOW}It sparkles with a brilliant light!{C.RESET}")
+                else:
+                    slow_print(f"  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
+                               f"{C.YELLOW} took the hook! (Lv.{wild.level}){C.RESET}")
                 press_enter()
                 player_c = self._pick_lead(player_c)
                 if player_c is None: break
 
                 result, obj = run_battle(player_c, wild, self.inventory,
                                          self.team, wild=True, weather=None)
+
                 if result == "win":
                     self.seen.add(wild.name)
                     self._count_battle()
@@ -1992,10 +2031,14 @@ class Game:
                     captured = obj
                     self.seen.add(captured.name)
                     self.caught.add(captured.name)
+                    if getattr(captured, 'is_shiny', False):
+                        self.shiny_caught.add(captured.name)
+                        slow_print(f"  {C.YELLOW}★✦★  You caught a SHINY {captured.name}! ★✦★{C.RESET}")
                     if captured.held_item:
                         stolen = captured.held_item
                         self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
                         captured.held_item = None
+
                         slow_print(f"  {C.YELLOW}★  {captured.name} was holding {stolen}!{C.RESET}")
                     if len(self.team) < 6:
                         self.team.append(captured)
@@ -2079,9 +2122,15 @@ class Game:
             lv = random.randint(lo + badge_bonus, hi + badge_bonus)
             wild = Creature(name, lv, is_player=False)
             wild.held_item = self._roll_held_item_with_pity(name)
+            self._apply_shiny_roll(wild)
 
-            slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
-                       f"{C.YELLOW} leaps from the shadows! (Lv.{wild.level}){C.RESET}")
+            if getattr(wild, 'is_shiny', False):
+                slow_print(f"\n  {C.YELLOW}✦✦✦ A SHINY {C.BOLD}{wild.name}{C.RESET}"
+                           f"{C.YELLOW} leaps from the shadows! (Lv.{wild.level}) ✦✦✦{C.RESET}")
+                slow_print(f"  {C.YELLOW}It sparkles with a brilliant light!{C.RESET}")
+            else:
+                slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
+                           f"{C.YELLOW} leaps from the shadows! (Lv.{wild.level}){C.RESET}")
             press_enter()
             player_c = self._pick_lead(player_c)
             if player_c is None: break
@@ -2091,6 +2140,7 @@ class Game:
             if result == "win":
                 self.seen.add(wild.name)
                 self._count_battle()
+
                 self.award_exp(player_c, wild)
                 self.earn_money(max(wild.level * 15, 100))
                 alive_after = [c for c in self.team if c.is_alive()]
@@ -2104,10 +2154,14 @@ class Game:
                 captured = obj
                 self.seen.add(captured.name)
                 self.caught.add(captured.name)
+                if getattr(captured, 'is_shiny', False):
+                    self.shiny_caught.add(captured.name)
+                    slow_print(f"  {C.YELLOW}★✦★  You caught a SHINY {captured.name}! ★✦★{C.RESET}")
                 if captured.held_item:
                     stolen = captured.held_item
                     self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
                     captured.held_item = None
+
                     slow_print(f"  {C.YELLOW}★  {captured.name} was holding {stolen}!{C.RESET}")
                 if len(self.team) < 6:
                     self.team.append(captured)
@@ -2422,6 +2476,7 @@ def main():
         g.season      = saved.get("season", "Spring")
         g.seen        = set(saved.get("seen", []))
         g.caught      = set(saved.get("caught", []))
+        g.shiny_caught = set(saved.get("shiny_caught", []))
         g.is_champion = saved.get("is_champion", False)
         g.avatar      = saved.get("avatar", "♂")
         g.visited_towns = set(saved.get("visited_towns", []))
@@ -2429,6 +2484,7 @@ def main():
         g.repel_steps = saved.get("repel_steps", 0)
         g.item_drought = saved.get("item_drought", 0)
         g._defeated_trainers = set(saved.get("defeated_trainers", []))
+
         # Load rival state
         from engine.rival import RivalState
         rival_data = saved.get("rival")

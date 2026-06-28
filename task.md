@@ -376,6 +376,41 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     via "Return to town"). `GROTTOS` is keyed by town name, not wild-area name, which is why
     the check inside `explore()` uses `self.town` rather than `area_name`.
 
+## Session 6 — Resume from mid-task cutoff (2026-06)
+
+- [x] **Audit pass: confirm no other `alive[0]`-style dead-end patterns remain** — status: done (commit bd681f5)
+  - Completed last session via grep of `engine/battle.py` and `engine/rival.py`. Two remaining
+    `alive_after[0]` sites in `run_rival_encounter()` and `run_rival_rematch()` were converted
+    to `_pick_lead(fainted_name=...)`. No further fallback patterns found.
+
+- [x] **Shiny / rare color-variant creatures** — status: done
+  - Previous session began this feature but was cut off with two bugs: (1) a duplicate
+    `if captured.held_item:` line (empty body after the shiny-catch block) causing
+    `IndentationError` in main.py; (2) the `def menu(title, options, color=C.CYAN):` line
+    deleted from `ui/display.py`, making `menu` unexportable and crashing all imports of
+    `engine.battle` and `main`. Both were fixed this session before verifying the feature.
+  - Full implementation confirmed across all 5 encounter paths:
+    - `Creature.is_shiny` attribute (default False), serialised in `to_dict`/`from_dict`
+      with `setdefault(False)` for old saves.
+    - `SHINY_CHANCE = 1/100` constant in `engine/core.py`.
+    - `Game._apply_shiny_roll(wild)` helper sets `wild.is_shiny = True` on a 1% roll.
+    - Called in all 5 wild creation spots: night-override pool, seasonal pool, regular
+      `random_wild()`, fishing, and grotto encounter.
+    - Distinct encounter messages for shiny (✦✦✦ banner + "sparkles with a brilliant light!").
+    - `Game.shiny_caught` set: populated at all 3 catch sites (explore, fish, grotto);
+      special "★✦★ You caught a SHINY!" message on catch.
+    - Persisted via `save_game(shiny_caught=…)` / `load_game()` with `setdefault([])` for
+      old saves; wired through `Game.save()` and the continue-load path.
+    - Pokédex list view: ✦ gold marker on entries the player has caught as shiny.
+    - Pokédex detail view: "✦ Shiny caught!" note next to "● Caught" status.
+    - `creature_card()` in display.py: ✦ suffix on name line.
+    - `team_summary()` in display.py: ✦ after name in team list.
+    - `_dname()` in battle.py: ✦ prefix on creature name in all battle messages.
+  - Verified: all files compile clean. 10-test script confirmed creature serialisation,
+    SHINY_CHANCE value, save/load round-trip, `_apply_shiny_roll` existence, 5 encounter
+    path calls, 3 catch-site tracking calls, encounter messages, Pokédex display, and
+    battle/display shiny markers all present and correct.
+
 ## New tasks — todo
 
 - [ ] **Battle: turn-by-turn damage summary readability** — status: todo
@@ -385,24 +420,9 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     help players following fast multi-hit or weather-chip damage sequences without needing to
     open the Battle Log every time.
 
-- [ ] **Shiny / rare color-variant creatures** — status: todo
-  - Add a small (~1/100) chance for any wild encounter (regular, seasonal, fishing, grotto) to
-    roll as a cosmetic "Shiny" variant: different display color/sparkle marker in battle and
-    Pokédex, no stat difference, purely a collector's flex. Persist `is_shiny` on `Creature`,
-    show a distinct catch message and Pokédex marker. Low mechanical risk, high "ooh!" payoff
-    — a good candidate for next session given the explore()/grotto/fishing encounter paths are
-    now all unified through similar code shapes.
-
 - [ ] **Daily/weekly login-style bonus for returning players** — status: todo
   - Track `last_played_date` (real-world date, not in-game `season`) in the save file. On
     first town-menu render of a new real-world day, show a small "Welcome back!" bonus (e.g. a
     free Potion or a small money gift) — purely a retention/QoL touch, capped at once per
     real day so it can't be farmed by reloading.
-
-- [ ] **Audit pass: confirm no other `alive[0]`-style dead-end patterns remain** — status: todo
-  - This session found and fixed one genuinely broken mid-cutoff edit (the `explore()` wild
-    battle block) and converted all known "pick first alive creature" call sites to
-    `_pick_lead(fainted_name=...)`. Worth a dedicated grep-and-read pass next session across
-    `engine/battle.py` and `engine/rival.py` (not just `main.py`) to confirm there isn't a
-    similar silent fallback elsewhere that never shows the new faint-switch prompt.
 
