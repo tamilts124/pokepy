@@ -939,11 +939,23 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     Revisit only if a future session adds enough new held-item or per-creature-usable types
     to make those lists long enough to matter.
 
-- [ ] **Move PP restore: partial-PP item (Ether/Elixir split)** — status: todo
-  - notes: Currently only one PP-restore item type exists (restores all moves by a flat
-    amount). Consider adding a cheaper single-move variant (Ether) alongside the existing
-    all-moves variant (Elixir) for a real price/utility trade-off, mirroring the Full Heal vs
-    Partial Heal pattern already used for the Inn.
+- [x] **Move PP restore: partial-PP item (Ether/Elixir split)** — status: done
+  - Added `Ether` (₽1200, restores 10 PP to one move) and `Max Ether` (₽2800, fully restores
+    one move's PP) as `type: "pp_single"` items in `data/creatures.py`. Both items are
+    purchasable: Ether unlocks at 1 badge, Max Ether at 4 badges via `BADGE_BONUS_STOCK`.
+  - Added `pp_single` handler in both the **in-battle Bag** (`engine/battle.py`): two-step
+    pick (pick move → restore) with \"already at full PP\" guard, item refunded if back is hit;
+    and the **overworld Bag** (`main.py`): three-step pick (creature → move → restore) with
+    the same full-PP guard.
+  - Both `NON_HOLDABLE` sets updated so Ether/Max Ether can't be wastefully equipped as held
+    items. Both PP Restore bag-category filters updated to include `pp_single`.
+  - Full price/utility trade-off achieved: Ether (₽1200 for one-move partial) vs Elixir
+    (₽3000 for all-moves partial); Max Ether (₽2800 for one-move full) vs Max Elixir (₽7000
+    for all-moves full). Meaningful savings when only one move needs topping off.
+  - Verified: all 6 files `py_compile` clean; 8-assertion functional test confirmed item
+    type, BADGE_BONUS_STOCK placement, in-battle/overworld handler presence, and restore math
+    (partial restore capped at max PP, full restore via 999 amount). Full 5-script regression
+    suite passes unchanged.
 
 - [ ] **Difficulty option at new-game (separate from Nuzlocke)** — status: todo
   - notes: Nuzlocke is an all-or-nothing permadeath toggle. A softer Easy/Normal/Hard

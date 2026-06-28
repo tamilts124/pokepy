@@ -1245,7 +1245,7 @@ def run_battle(player_c, enemy_c, inventory, team,
         elif choice == 1:
             usable = {k: v for k, v in inventory.items()
                       if v > 0 and ITEMS.get(k, {}).get("type") in
-                      ("heal", "cure", "revive", "capture", "pp", "boost")}
+                      ("heal", "cure", "revive", "capture", "pp", "pp_single", "boost")}
 
             if not usable:
                 slow_print(f"{C.YELLOW}No usable items!{C.RESET}")
@@ -1257,7 +1257,7 @@ def run_battle(player_c, enemy_c, inventory, team,
                 ("🎯  Capture",      {"capture"}),
                 ("💊  Healing",      {"heal", "revive"}),
                 ("✨  Status Cures",     {"cure"}),
-                ("🔋  PP Restore",   {"pp"}),
+                ("🔋  PP Restore",   {"pp", "pp_single"}),
                 ("📈  Battle Boosts", {"boost"}),
             ]
             _grouped = {}
@@ -1376,6 +1376,29 @@ def run_battle(player_c, enemy_c, inventory, team,
                     max_pp = MOVES[m]["pp"]
                     player_c.pp[m] = min(max_pp, player_c.pp.get(m, 0) + idata["amount"])
                 slow_print(f"  {C.GREEN}Move PP restored!{C.RESET}")
+
+            elif idata["type"] == "pp_single":
+                if not player_c.moves:
+                    slow_print(f"  {C.YELLOW}{player_c.name} has no moves!{C.RESET}")
+                    inventory[item_name] += 1
+                    took_turn = False
+                else:
+                    pp_opts = [f"{m}  {C.GRAY}({player_c.pp.get(m, 0)}/{MOVES[m]['pp']} PP){C.RESET}"
+                               for m in player_c.moves] + ["← Back"]
+                    pc = menu("Restore PP for which move?", pp_opts)
+                    if pc == len(player_c.moves):
+                        inventory[item_name] += 1
+                        took_turn = False
+                    else:
+                        target_move = player_c.moves[pc]
+                        max_pp = MOVES[target_move]["pp"]
+                        if player_c.pp.get(target_move, 0) >= max_pp:
+                            slow_print(f"  {C.YELLOW}{target_move} is already at full PP!{C.RESET}")
+                            inventory[item_name] += 1
+                            took_turn = False
+                        else:
+                            player_c.pp[target_move] = min(max_pp, player_c.pp.get(target_move, 0) + idata["amount"])
+                            slow_print(f"  {C.GREEN}{target_move}'s PP was restored!{C.RESET}")
 
             elif idata["type"] == "boost":
                 stat = idata["stat"]

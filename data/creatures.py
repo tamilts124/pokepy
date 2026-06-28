@@ -481,6 +481,8 @@ ITEMS = {
     "Good Rod":     {"type": "fish",    "price": 0,    "desc": "Fish for rarer water creatures"},
     "Revive":       {"type": "revive",  "amount": 0.5, "price": 1500, "desc": "Revives fainted (half HP)"},
     "Max Revive":   {"type": "revive",  "amount": 1.0, "price": 4000, "desc": "Revives fainted (full HP)"},
+    "Ether":        {"type": "pp_single", "amount": 10,  "price": 1200, "desc": "Restores 10 PP to one move"},
+    "Max Ether":    {"type": "pp_single", "amount": 999, "price": 2800, "desc": "Fully restores PP of one move"},
     "Elixir":       {"type": "pp",      "amount": 10,  "price": 3000, "desc": "Restores 10 PP to all moves"},
     "Max Elixir":   {"type": "pp",      "amount": 999, "price": 7000, "desc": "Fully restores all move PP"},
     "X Attack":     {"type": "boost",   "stat": "atk",    "amount": 1.5, "price": 500,  "desc": "Raises Attack in battle"},

@@ -755,7 +755,7 @@ class Game:
         ("🎯  Capture",          {"capture"}),
         ("💊  Healing",          {"heal", "revive"}),
         ("✨  Status Cures",         {"cure"}),
-        ("🔋  PP Restore",       {"pp"}),
+        ("🔋  PP Restore",       {"pp", "pp_single"}),
         ("📈  Battle Boosts",    {"boost"}),
         ("🛡  Field & Travel",   {"repel", "escape", "fish"}),
         ("💎  Held Items",       {"held"}),
@@ -869,6 +869,28 @@ class Game:
                 slow_print(f"  {C.GREEN}{target.name}'s PP restored!{C.RESET}")
                 press_enter()
 
+            elif idata["type"] == "pp_single":
+                alive = [c for c in self.team if c.is_alive() and c.moves]
+                if not alive:
+                    slow_print("  No alive creature has any moves."); press_enter(); continue
+                t_opts = [f"{c.name} Lv.{c.level}" for c in alive] + ["← Back"]
+                tc = menu("Restore PP for which creature?", t_opts)
+                if tc == len(alive): continue
+                target = alive[tc]
+                m_opts = [f"{m}  {C.GRAY}({target.pp.get(m, 0)}/{MOVE_DATA[m]['pp']} PP){C.RESET}"
+                          for m in target.moves] + ["← Back"]
+                mc = menu(f"Restore PP for which move?", m_opts)
+                if mc == len(target.moves): continue
+                target_move = target.moves[mc]
+                max_pp = MOVE_DATA[target_move]["pp"]
+                if target.pp.get(target_move, 0) >= max_pp:
+                    slow_print(f"  {C.YELLOW}{target_move} is already at full PP!{C.RESET}")
+                else:
+                    target.pp[target_move] = min(max_pp, target.pp.get(target_move, 0) + idata["amount"])
+                    self.inventory[item_name] -= 1
+                    slow_print(f"  {C.GREEN}{target.name}'s {target_move} PP was restored!{C.RESET}")
+                press_enter()
+
             elif idata["type"] == "repel":
                 already_active = self.repel_steps > 0
                 self.repel_steps += idata["charges"]
@@ -896,7 +918,7 @@ class Game:
                         "Potion", "Super Potion", "Hyper Potion", "Full Restore",
                         "Antidote", "Burn Heal", "Awakening", "Ice Heal",
                         "Cheer Up", "Full Heal",
-                        "Elixir", "Max Elixir",
+                        "Elixir", "Max Elixir", "Ether", "Max Ether",
                         "X Attack", "X Defense",
                         "Fire Stone", "Water Stone", "Leaf Stone", "Thunder Stone",
                         "Repel", "Super Repel", "Max Repel"}
@@ -963,7 +985,7 @@ class Game:
             "Potion", "Super Potion", "Hyper Potion", "Full Restore",
             "Antidote", "Burn Heal", "Awakening", "Ice Heal",
             "Cheer Up", "Full Heal",
-            "Elixir", "Max Elixir",
+            "Elixir", "Max Elixir", "Ether", "Max Ether",
             "X Attack", "X Defense", "X Sp.Atk", "X Sp.Def", "X Speed",
             "Fire Stone", "Water Stone", "Leaf Stone", "Thunder Stone",
             "Repel", "Super Repel", "Max Repel",
@@ -1458,6 +1480,8 @@ class Game:
             (5, "Max Repel"),
             (3, "Hyper Potion"),
             (3, "Revive"),
+            (1, "Ether"),
+            (4, "Max Ether"),
             (3, "Elixir"),
             (4, "Ultra Ball"),
             (4, "Full Heal"),
