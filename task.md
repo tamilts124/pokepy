@@ -271,10 +271,6 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ## New tasks — todo
 
-- [ ] **Held item pity timer for long catch droughts** — status: todo
-  - Wild creatures roll their held item independently per encounter via `held_item_pool`
-    (typically 5-20% chance). A player with bad luck can go many encounters in a row without
-
 ## Session 4 — Resume from mid-task cutoff (2026-06)
 
 - [x] **Held item pity timer for long catch droughts** — status: done
@@ -748,19 +744,6 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     coverage moves..." line before showing the expanded menu (fixed 3 + up to 3 dynamic).
     On subsequent visits with better team coverage, fewer or zero extras are injected.
   - Verified: same `_test_vendor_tutor.py` tests 6–10.
-
-
-  - Currently all held items (Life Orb, Choice Band, Leftovers, etc.) can only be found on
-    wild creatures as random drops or given by the player. Add a special vendor NPC in
-    Dragonspire (the final pre-Champion town) who sells the full catalogue of held items at
-    premium prices (e.g. ₽3000–₽5000 each), giving late-game players a reliable way to
-    outfit their team without relying purely on RNG drops.
-
-- [ ] **Egg moves / tutor expansion: teach moves based on type** — status: todo
-  - The current Move Tutor in each town teaches 2–3 fixed moves. Expand the Dragonspire tutor
-    to offer type-coverage moves relevant to the player's current team (e.g. if the team has a
-    Fire-type, offer a Water-coverage move like Surf or Ice Beam). Limit to 3 suggestions per
-    visit, chosen based on team types — gives late-game players meaningful build decisions.
 
 - [x] **Battle: per-move accuracy display in fight menu** — status: done
   - Added `_acc_tag(acc)` helper alongside `_pwr_tier` in `engine/battle.py`. Shows a gray
