@@ -874,3 +874,49 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     scaling line confirmed untouched. Full 17-script regression suite passes; `py_compile`
     clean across the whole repo.
 
+- [x] **Creatures menu: relearn a forgotten level-up move** — status: done
+  - Found half-finished on session start: `git status` showed an uncommitted edit to
+    `main.py` adding a "📖  Relearn move" option to the Creatures action menu, with no
+    corresponding task.md entry (previous session was cut off before logging or committing).
+    Verified it carefully before trusting it, since the action-menu list is index-driven
+    (`ac == N`) and a half-finished insertion is exactly the kind of change that silently
+    shifts every later branch off by one.
+  - Found the implementation itself was actually complete and correct: the new option was
+    inserted before "← Back to team" in the `actions` list, the existing `Back` branch was
+    correctly renumbered from `ac == 4` to `ac == 5`, and the new `ac == 4` branch was
+    inserted in between — matching the list order exactly. Logic: walks
+    `CREATURES[name]["moves_learned"]` for every level ≤ the creature's current level,
+    collects any move not already known into `eligible`, lets the player pick one (or shows
+    a "no forgotten moves" message if the list is empty), then either appends it directly if
+    there's a free move slot or prompts which existing move to forget — refreshing `c.pp` for
+    the learned move either way.
+  - Verified: `python -m py_compile` clean on all 6 core files. Confirmed `MD` (the
+    `MOVES` alias used inside the new branch) is already imported in scope at the top of
+    `open_creatures()` (line 912) and that `moves_learned` exists on all 38 creatures in
+    `data/creatures.py`. Wrote and ran a scoped throwaway test (deleted after use) that
+    asserted the menu option, the `ac == 4`/`ac == 5` branch indices, and ast-parsed the file
+    cleanly, then exercised the real eligibility-computation logic against live creature data
+    (Flamclaw at Lv.30 correctly resolves to `['Scratch', 'Ember', 'Bite', 'Slash',
+    'Flamethrower']`, all of which exist in the `MOVES` table). Re-ran the full 17-script
+    existing regression suite — all still pass, confirming the action-menu renumbering didn't
+    disturb Reorder/Held item/Use item/Rename. `py_compile` clean across the whole repo.
+
+## New tasks — todo
+
+- [ ] **Bag: sort/filter long item lists** — status: todo
+  - notes: Bag, Use-item, and held-item menus all render every matching inventory entry as a
+    flat list with no grouping. Late-game, with 15-20+ distinct items (berries, balls, stones,
+    combat items, cures), this gets hard to scan. Add category grouping (Balls / Healing /
+    Status cures / Held items / Stones / Key items) with a sub-menu, or at minimum sort each
+    existing list alphabetically instead of dict-insertion-order.
+
+- [ ] **Move PP restore: partial-PP item (Ether/Elixir split)** — status: todo
+  - notes: Currently only one PP-restore item type exists (restores all moves by a flat
+    amount). Consider adding a cheaper single-move variant (Ether) alongside the existing
+    all-moves variant (Elixir) for a real price/utility trade-off, mirroring the Full Heal vs
+    Partial Heal pattern already used for the Inn.
+
+- [ ] **Difficulty option at new-game (separate from Nuzlocke)** — status: todo
+  - notes: Nuzlocke is an all-or-nothing permadeath toggle. A softer Easy/Normal/Hard
+    difficulty pick (affecting wild/trainer level scaling multiplier and/or prize money)
+    would let players tune challenge without the permadeath stakes.

@@ -1065,6 +1065,7 @@ class Game:
                     "📦  Change held item",
                     "🎒  Use item",
                     "✏  Rename",
+                    "📖  Relearn move",
                     "← Back to team",
                 ]
                 ac = menu("Action:", actions)
@@ -1245,8 +1246,44 @@ class Game:
                             slow_print(f"  {C.GREEN}{c.name}'s move PP restored!{C.RESET}")
                         press_enter()
 
-                # ── Back ──
+                # ── Relearn move ──
                 elif ac == 4:
+                    learned = CREATURES[c.name]["moves_learned"]
+                    eligible = []
+                    for lv, mvs in sorted(learned.items()):
+                        if lv <= c.level:
+                            for m in mvs:
+                                if m not in c.moves and m not in eligible:
+                                    eligible.append(m)
+                    if not eligible:
+                        slow_print(f"  {C.YELLOW}{c.name} has no forgotten moves to relearn.{C.RESET}")
+                        press_enter(); continue
+                    relearn_opts = [
+                        f"{m}  {C.GRAY}[{MD[m]['type']}] Pwr:{MD[m]['power']}{C.RESET}"
+                        for m in eligible
+                    ] + ["← Cancel"]
+                    rlc = menu(f"Relearn which move for {c.name}?", relearn_opts)
+                    if rlc == len(eligible):
+                        continue
+                    chosen_move = eligible[rlc]
+                    if len(c.moves) < 4:
+                        c.moves.append(chosen_move)
+                        c.pp[chosen_move] = MD[chosen_move]["pp"]
+                        slow_print(f"  {C.GREEN}{c.name} relearned {chosen_move}!{C.RESET}")
+                    else:
+                        slot_opts = [f"{m}" for m in c.moves] + ["Cancel"]
+                        sl = menu(f"Forget which move to make room for {chosen_move}?", slot_opts)
+                        if sl == len(c.moves):
+                            continue
+                        old = c.moves[sl]
+                        c.moves[sl] = chosen_move
+                        c.pp[chosen_move] = MD[chosen_move]["pp"]
+                        slow_print(f"  {C.GREEN}{c.name} forgot {old} and relearned {chosen_move}!{C.RESET}")
+                    press_enter()
+
+
+                # ── Back ──
+                elif ac == 5:
                     break
 
 
