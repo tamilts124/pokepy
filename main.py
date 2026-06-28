@@ -228,6 +228,7 @@ class Game:
         for etype, val in events:
             if etype == "levelup":
                 slow_print(f"  {C.GREEN}★  {creature.name} grew to Lv.{val}!{C.RESET}")
+                print('\a', end='', flush=True)
             elif etype == "newmove":
                 slow_print(f"  {C.CYAN}❆  {creature.name} learned {val}!{C.RESET}")
             elif etype == "movefull":
@@ -266,6 +267,7 @@ class Game:
                     creature.evolve(val)
                     slow_print(f"  {C.MAGENTA}❆  {old} evolved into "
                                f"{C.BOLD}{val}{C.RESET}{C.MAGENTA}!  ❆{C.RESET}")
+                    print('\a', end='', flush=True)
                     self._check_achievement("first_evolution")
                     evolved = True
         return evolved
@@ -322,12 +324,14 @@ class Game:
                             old = bc.name
                             bc.evolve(val)
                             slow_print(f"  {C.MAGENTA}✦  {old} evolved into {C.BOLD}{val}{C.RESET}{C.MAGENTA}!{C.RESET}")
+                            print('\a', end='', flush=True)
 
         slow_print(f"\n  {winner.name} gained {C.YELLOW}{exp} EXP{C.RESET}!")
         events = winner.gain_exp(exp)
         for etype, val in events:
             if etype == "levelup":
                 slow_print(f"  {C.GREEN}★  {winner.name} grew to Lv.{val}!{C.RESET}")
+                print('\a', end='', flush=True)
             elif etype == "newmove":
                 slow_print(f"  {C.CYAN}✦  {winner.name} learned {val}!{C.RESET}")
             elif etype == "movefull":
@@ -365,6 +369,7 @@ class Game:
                     winner.evolve(val)
                     slow_print(f"  {C.MAGENTA}✦  {old} evolved into "
                                f"{C.BOLD}{val}{C.RESET}{C.MAGENTA}!  ✦{C.RESET}")
+                    print('\a', end='', flush=True)
         press_enter()
 
     def earn_money(self, amount):
@@ -1135,6 +1140,7 @@ class Game:
         slow_print(f"  {C.BOLD}{leader}{C.RESET}: «You've earned the "
                    f"{C.YELLOW}{badge}{C.RESET}!»")
         self.badges.append(badge)
+        print('\a', end='', flush=True)
         self._check_achievement("first_badge")
         if len(self.badges) == len(REQUIRED_BADGES):
             self._check_achievement("all_badges")

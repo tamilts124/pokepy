@@ -1119,6 +1119,7 @@ def run_battle(player_c, enemy_c, inventory, team,
                 caught, shakes = animated_capture(enemy_c, item_name, idata["rate"])
                 if caught:
                     slow_print(f"  {C.GREEN}★  Gotcha! {enemy_c.name} was caught!{C.RESET}")
+                    print('\a', end='', flush=True)
                     press_enter()
                     return "caught", enemy_c
                 else:
