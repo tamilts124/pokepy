@@ -673,11 +673,15 @@ class Game:
                 )
 
             opts.append("🔀  Reorder team")
+            opts.append("🔃  Sort team")
             opts.append("← Back")
             idx = menu("Which creature?", opts)
 
-            if idx == len(self.team) + 1:   # ← Back
+            if idx == len(self.team) + 2:   # ← Back
                 return
+            if idx == len(self.team) + 1:   # Sort team
+                self._sort_team_menu()
+                continue
             if idx == len(self.team):        # Reorder team
                 self._reorder_team_inline()
                 continue
@@ -939,6 +943,31 @@ class Game:
                 elif ac == 4:
                     break
 
+
+    def _sort_team_menu(self):
+        """Sort the team in-place by the player's chosen criterion."""
+        clear()
+        section("🔃  SORT TEAM")
+        sort_opts = [
+            "By Level  (highest first)",
+            "By HP %   (lowest first — lead with injured)",
+            "By Name   (A → Z)",
+            "← Cancel",
+        ]
+        choice = menu("Sort by:", sort_opts)
+        if choice == 0:   # Level desc
+            self.team.sort(key=lambda c: c.level, reverse=True)
+            slow_print(f"  {C.GREEN}Team sorted by Level (highest first).{C.RESET}")
+        elif choice == 1: # HP % asc (most injured first — useful for triage)
+            self.team.sort(key=lambda c: c.hp / c.max_hp if c.max_hp else 0)
+            slow_print(f"  {C.GREEN}Team sorted by HP% (most injured first).{C.RESET}")
+        elif choice == 2: # Name asc
+            nick_or_name = lambda c: getattr(c, 'nickname', None) or c.name
+            self.team.sort(key=nick_or_name)
+            slow_print(f"  {C.GREEN}Team sorted alphabetically.{C.RESET}")
+        else:
+            return
+        press_enter()
 
     def _reorder_team_inline(self):
         """Reorder team by picking a creature and a destination slot."""

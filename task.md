@@ -135,7 +135,7 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     using the stone from the Bag. Define which creatures accept which stone in CREATURES data.
     Implement stone-use in `open_bag()` → calls `creature.evolve()`.
 
-- [ ] **Creature sorting in team view** — status: todo
-  - The Creatures menu lists team members in the order they were caught. Add a sort option:
-    "Sort by Level", "Sort by HP %", "Sort by Name". Useful for quickly finding the right
-    creature in a large team.
+- [x] **Creature sorting in team view** — status: done
+  - Added "🔃 Sort team" option to the Creatures menu alongside the existing "🔀 Reorder team".
+    Sub-menu offers: Sort by Level (desc), Sort by HP % (least healthy first), Sort by Name (A→Z,
+    respects nicknames). Implemented as `_sort_team_menu()` — sorts `self.team` in-place.
