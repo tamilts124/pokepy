@@ -390,7 +390,7 @@ def save_file_path(slot=1):
 
 SAVE_VERSION = 2
 
-def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, is_champion=False, avatar="♂"):
+def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, is_champion=False, avatar="♂", visited_towns=None):
     data = {
         "version":     SAVE_VERSION,
         "player_name": player_name,
@@ -407,6 +407,7 @@ def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1
         "caught":      sorted(caught or []),
         "is_champion": bool(is_champion),
         "avatar":      avatar or "♂",
+        "visited_towns": sorted(visited_towns or []),
     }
     with open(save_file_path(slot), "w") as f:
         json.dump(data, f, indent=2)
@@ -429,6 +430,7 @@ def load_game(slot=1):
     data.setdefault("caught", [])
     data.setdefault("is_champion", False)
     data.setdefault("avatar", "♂")
+    data.setdefault("visited_towns", [])
     data["team"] = [Creature.from_dict(d) for d in data["team"]]
     return data
 
@@ -455,12 +457,12 @@ def list_save_slots():
 # ─────────────────────────────────────────────
 #  WILD ENCOUNTER HELPER
 # ─────────────────────────────────────────────
-def random_wild(area_name):
+def random_wild(area_name, badge_bonus=0):
     pool = WILD_AREAS.get(area_name, [])
     if not pool:
         return None
     name, lo, hi = random.choice(pool)
-    level = random.randint(lo, hi)
+    level = random.randint(lo + badge_bonus, hi + badge_bonus)
     wild = Creature(name, level, is_player=False)
     # Roll for a held item from this creature's pool
     pool_data = CREATURES[name].get("held_item_pool", [])

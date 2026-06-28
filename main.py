@@ -60,6 +60,32 @@ MOVE_TUTORS = {
     "Dragonspire": [("Dragon Rage", 2000), ("Earthquake", 2500), ("Swords Dance", 1500)],
 }
 
+# ── Town revisit flavor lines ────────────────────────────
+# Each town has two lines: one shown after beating its gym, one for non-gym revisits.
+# Format: (gym_beaten_quote, general_revisit_quote)
+TOWN_REVISIT_QUOTES = {
+    "Rootvale":     (None,
+                     "The tall grass sways like it's waving you home."),
+    "Mudfen":       (None,
+                     "The swamp smells just as bad as you remember."),
+    "Greenpath":    ("Fern's gym is quieter now. The leaves remember your victory.",
+                     "The forest air feels cleaner every time you visit."),
+    "Stonepeak":    ("Granite's badge glints in your pocket like a trophy.",
+                     "The mountain wind is as sharp and cold as ever."),
+    "Ashveil":      ("The ash still falls, but Cinder's fire has cooled for you.",
+                     "Warm cinders drift lazily through the volcanic air."),
+    "Frostholm":    ("Blizara's gym stands silent. You broke her cold streak.",
+                     "Your breath fogs in the air. Nothing thaws here."),
+    "Mistveil":     ("Myra said the mist foresees your future. It looks bright.",
+                     "The purple mist curls around you like it knows your name."),
+    "Shadowmere":   ("Umbra's Shadow Badge — proof the darkness couldn't hold you.",
+                     "Shadows shift at the corner of your eye. Old habits."),
+    "Dragonspire":  ("Draven nods at you now. One dragon to another.",
+                     "The great skeleton looms overhead, ancient and silent."),
+    "Champion Road": ("You've walked this road before and come out on top.",
+                      "The air here hums with history. Yours included."),
+}
+
 # ── Day/Night cycle ──────────────────────────────────────
 def time_of_day():
     h = time.localtime().tm_hour
@@ -103,6 +129,7 @@ class Game:
         self.caught      = set()         # creature names successfully captured
         self.is_champion = False         # True once the Elite Four has been beaten at least once
         self.avatar      = "♂"          # trainer avatar symbol chosen at character creation
+        self.visited_towns = set()       # towns the player has entered at least once
 
     # ── Achievement checker ────────────────────────────
     def _check_achievement(self, key):
@@ -396,7 +423,8 @@ class Game:
                   seen=getattr(self, 'seen', set()),
                   caught=getattr(self, 'caught', set()),
                   is_champion=getattr(self, 'is_champion', False),
-                  avatar=getattr(self, 'avatar', '♂'))
+                  avatar=getattr(self, 'avatar', '♂'),
+                  visited_towns=getattr(self, 'visited_towns', set()))
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
 
@@ -1239,6 +1267,8 @@ class Game:
 
             # ── Trainer (18%) ──
             elif roll < 0.26 and trainer_pool:
+                # Badge-scaled levels: +5 per 2 badges earned
+                badge_bonus = (len(self.badges) // 2) * 5
                 # Build a trainer team of 1-3 creatures
                 team_size = random.choices([1, 2, 3], weights=[40, 40, 20])[0]
                 trainer_team = [random.choice(trainer_pool) for _ in range(team_size)]
@@ -1249,7 +1279,7 @@ class Game:
                 banner(f"  TRAINER BATTLE  ", C.YELLOW)
                 slow_print(f"\n  {C.BOLD}{t_name}{C.RESET} steps out from the tall grass!")
                 slow_print(f"  {C.YELLOW}{t_name}{C.RESET}: \"Hey! You there! Let's battle!\"")
-                team_preview = ", ".join(f"{n} Lv.{l}" for n, l in trainer_team)
+                team_preview = ", ".join(f"{n} Lv.{l + badge_bonus}" for n, l in trainer_team)
                 slow_print(f"  {C.GRAY}{t_name} has: {team_preview}{C.RESET}")
                 press_enter()
                 player_c = self._pick_lead(player_c)
@@ -1257,7 +1287,7 @@ class Game:
                 prize_money = 0
                 lost = False
                 for cname, lv in trainer_team:
-                    enemy = Creature(cname, lv, is_player=False)
+                    enemy = Creature(cname, lv + badge_bonus, is_player=False)
                     result, obj = run_battle(player_c, enemy, self.inventory,
                                              self.team, wild=False,
                                              trainer_name=t_name, weather=weather)
@@ -1265,7 +1295,7 @@ class Game:
                         self._count_battle()
                         self.award_exp(player_c, enemy)
 
-                        prize_money += lv * 40
+                        prize_money += (lv + badge_bonus) * 40
                         alive_after = [c for c in self.team if c.is_alive()]
                         if alive_after and not player_c.is_alive():
                             player_c = alive_after[0]
@@ -1286,6 +1316,8 @@ class Game:
 
             # ── Wild (50%) ──
             elif roll < 0.76:
+                # Badge-scaled levels: +5 per 2 badges earned
+                badge_bonus = (len(self.badges) // 2) * 5
                 # Build pool: base wild pool + any seasonal additions
                 seasonal_extras = SEASONAL_WILDS.get(self.season, {}).get(area_name, [])
 
@@ -1300,17 +1332,17 @@ class Game:
 
                 if wild_pool_override:
                     name, lo, hi = random.choice(wild_pool_override)
-                    lv = random.randint(lo, hi)
+                    lv = random.randint(lo + badge_bonus, hi + badge_bonus)
                     wild = Creature(name, lv, is_player=False)
                 elif seasonal_extras and random.random() < 0.30:
                     # 30% chance to pull from the seasonal bonus pool
                     name, lo, hi = random.choice(seasonal_extras)
-                    lv = random.randint(lo, hi)
+                    lv = random.randint(lo + badge_bonus, hi + badge_bonus)
                     wild = Creature(name, lv, is_player=False)
                     slow_print(f"  {SEASON_COLORS.get(self.season, C.GREEN)}"
                                f"✦ A {self.season} visitor!{C.RESET}")
                 else:
-                    wild = random_wild(area_name)
+                    wild = random_wild(area_name, badge_bonus=badge_bonus)
 
 
                 if wild:
@@ -1678,6 +1710,18 @@ class Game:
             banner(f"  {self.town}  ")
             slow_print(f"  {C.GRAY}{town_data['desc']}{C.RESET}", 0.01)
 
+            # Revisit flavor text — show a short quote when the player has been here before
+            if self.town in self.visited_towns:
+                gym_badge = (town_data.get("gym") or {}).get("badge")
+                gym_beaten = gym_badge and gym_badge in self.badges
+                quotes = TOWN_REVISIT_QUOTES.get(self.town)
+                if quotes:
+                    quote = quotes[0] if gym_beaten and quotes[0] else quotes[1]
+                    if quote:
+                        slow_print(f"  {C.CYAN}✦  {quote}{C.RESET}", 0.01)
+            else:
+                self.visited_towns.add(self.town)
+
             # Day/Night display
             tod, tod_color, tod_icon = time_of_day()
             alive_count = sum(1 for c in self.team if c.is_alive())
@@ -1914,6 +1958,7 @@ def main():
         g.caught      = set(saved.get("caught", []))
         g.is_champion = saved.get("is_champion", False)
         g.avatar      = saved.get("avatar", "♂")
+        g.visited_towns = set(saved.get("visited_towns", []))
         # Load rival state
         from engine.rival import RivalState
         rival_data = saved.get("rival")
