@@ -124,10 +124,10 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 - [x] **Move type color in fight menu** — status: done (commit 353d438)
   - TYPE_COLORS applied to type tag next to move name in fight menu. Uppercase type label.
 
-- [ ] **Inn "heal preview" before paying** — status: todo
-  - Currently the Inn shows the team summary, asks for payment confirmation, then heals. Add a
-    per-creature preview of how much HP/PP each will recover before the player confirms payment,
-    so they can make an informed choice (e.g. if everything is already full, they see that).
+- [x] **Inn "heal preview" before paying** — status: done
+  - `visit_inn()` now shows a per-creature preview table (HP gain, PP restore status, active
+    status condition) before the payment confirmation. Tells the player exactly what they gain,
+    and if the team is already full shows a special message with an optional "pay anyway" prompt.
 
 - [ ] **Evolution Stone items** — status: todo
   - Add Fire Stone, Water Stone, Leaf Stone, Thunder Stone to the ITEMS dict. Some creatures

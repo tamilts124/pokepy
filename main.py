@@ -439,9 +439,40 @@ class Game:
         from data.creatures import MOVES as MOVE_DATA
         clear()
         section(f"🏨  INN  —  {C.YELLOW}₽{cost}{C.RESET} to heal all creatures")
-        team_summary(self.team)
-        if not confirm(f"\n  Pay ₽{cost} to fully heal your team?"):
-            return
+
+        # ── Heal-preview table ─────────────────────────────────────────────
+        print(f"  {'Creature':<16} {'HP':>12}   {'PP':>8}  {'Status'}")
+        print(f"  {'─'*16} {'─'*12}   {'─'*8}  {'─'*8}")
+        anything_to_heal = False
+        for c in self.team:
+            hp_gain  = c.max_hp - c.hp
+            pp_short = any(c.pp.get(m, 0) < MOVE_DATA[m]["pp"] for m in c.moves)
+            has_status = bool(c.status)
+            if hp_gain > 0 or pp_short or has_status:
+                anything_to_heal = True
+
+            hp_str = f"{c.hp}/{c.max_hp}"
+            if hp_gain > 0:
+                hp_str += f"  {C.GREEN}+{hp_gain}{C.RESET}"
+            else:
+                hp_str = f"{C.GRAY}{hp_str} (full){C.RESET}"
+
+            pp_str = f"{C.GREEN}restore{C.RESET}" if pp_short else f"{C.GRAY}full{C.RESET}"
+            st_str = f"{C.RED}{c.status}{C.RESET}" if c.status else f"{C.GRAY}—{C.RESET}"
+
+            nick = getattr(c, 'nickname', None)
+            dname = f"{nick} ({c.name})" if nick else c.name
+            print(f"  {dname:<16} {hp_str:>12}   {pp_str:>8}  {st_str}")
+
+        print()
+        if not anything_to_heal:
+            slow_print(f"  {C.GRAY}Your team is already at full health and PP!{C.RESET}")
+            if not confirm(f"\n  Pay ₽{cost} anyway?"):
+                return
+        else:
+            if not confirm(f"\n  Pay ₽{cost} to fully heal your team?"):
+                return
+
         if self.money < cost:
             slow_print(f"  {C.RED}Not enough money! Need ₽{cost}.{C.RESET}")
             press_enter(); return
