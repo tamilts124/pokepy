@@ -239,7 +239,7 @@ class Game:
                            f"{C.BOLD}{new_move}{C.RESET}"
                            f"{C.YELLOW}!{C.RESET}")
                 slow_print(f"     {C.GRAY}[{mv['type']}]  Pwr:{mv['power']}  "
-                           f"PP:{mv['pp']}{C.RESET}")
+                           f"PP:{mv['pp']}  {mv.get('desc','')}{C.RESET}")
                 slow_print(f"  {C.RED}But {creature.name} already knows 4 moves!{C.RESET}")
                 print()
                 r_opts = []
@@ -247,7 +247,7 @@ class Game:
                     mm = MOVE_DATA[m]
                     r_opts.append(f"Replace {C.BOLD}{m}{C.RESET}  "
                                   f"{C.GRAY}[{mm['type']}] Pwr:{mm['power']} "
-                                  f"PP:{creature.pp.get(m,0)}/{mm['pp']}{C.RESET}")
+                                  f"PP:{creature.pp.get(m,0)}/{mm['pp']}  {mm.get('desc','')}{C.RESET}")
                 r_opts.append(f"Don't learn {new_move}")
                 rc = menu(f"Which move to replace with {new_move}?", r_opts)
                 if rc < len(creature.moves):
@@ -341,7 +341,7 @@ class Game:
                            f"{C.BOLD}{new_move}{C.RESET}"
                            f"{C.YELLOW}!{C.RESET}")
                 slow_print(f"     {C.GRAY}[{mv['type']}]  Pwr:{mv['power']}  "
-                           f"PP:{mv['pp']}{C.RESET}")
+                           f"PP:{mv['pp']}  {mv.get('desc','')}{C.RESET}")
                 slow_print(f"  {C.RED}But {winner.name} already knows 4 moves!{C.RESET}")
                 print()
                 opts = []
@@ -349,7 +349,7 @@ class Game:
                     mm = MOVE_DATA[m]
                     opts.append(f"Replace {C.BOLD}{m}{C.RESET}  "
                                 f"{C.GRAY}[{mm['type']}] Pwr:{mm['power']} "
-                                f"PP:{winner.pp.get(m,0)}/{mm['pp']}{C.RESET}")
+                                f"PP:{winner.pp.get(m,0)}/{mm['pp']}  {mm.get('desc','')}{C.RESET}")
                 opts.append(f"Don't learn {new_move}")
                 choice = menu(f"Which move to replace with {new_move}?", opts)
                 if choice < len(winner.moves):

@@ -1045,7 +1045,8 @@ def run_battle(player_c, enemy_c, inventory, team,
                     (f"{m:<16}  {C.GRAY}PP {player_c.pp[m]}/{MOVES[m]['pp']}"
                      f"  Pwr:{MOVES[m]['power']:<4} [{MOVES[m]['type']:<8}]{C.RESET}"
                      f"  {type_hint(MOVES[m]['type'], enemy_c.types)}"
-                     f"{(' ' + C.CYAN + '[FAST]' + C.RESET) if MOVES[m].get('priority',0) > 0 else ''}")
+                     f"{(' ' + C.CYAN + '[FAST]' + C.RESET) if MOVES[m].get('priority',0) > 0 else ''}"
+                     f"\n     {C.GRAY}{MOVES[m].get('desc', '')}{C.RESET}")
                     for m in player_c.moves
                 ]
                 move_opts.append("← Back")
