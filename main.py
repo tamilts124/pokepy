@@ -750,6 +750,26 @@ class Game:
 
 
     # ── BAG ────────────────────────────────────
+    # Bag category grouping -- maps each ITEMS["type"] value to a display bucket.
+    BAG_CATEGORIES = [
+        ("🎯  Capture",          {"capture"}),
+        ("💊  Healing",          {"heal", "revive"}),
+        ("✨  Status Cures",         {"cure"}),
+        ("🔋  PP Restore",       {"pp"}),
+        ("📈  Battle Boosts",    {"boost"}),
+        ("🛡  Field & Travel",   {"repel", "escape", "fish"}),
+        ("💎  Held Items",       {"held"}),
+        ("💠  Evolution Stones", {"stone"}),
+        ("🍬  Other",            {"rare_candy"}),
+    ]
+
+    def _bag_category_for(self, item_name):
+        itype = ITEMS.get(item_name, {}).get("type", "")
+        for label, types in self.BAG_CATEGORIES:
+            if itype in types:
+                return label
+        return "🍬  Other"
+
     def open_bag(self):
         from data.creatures import MOVES as MOVE_DATA
         while True:
@@ -760,14 +780,30 @@ class Game:
                 slow_print("  Your bag is empty.")
                 press_enter(); return
 
-            opts = [f"{k} x{v}  {C.GRAY}({ITEMS[k]['desc']}){C.RESET}"
-                    for k, v in have.items()]
-            opts.append("← Close Bag")
-            choice = menu("Items:", opts)
-            if choice == len(have):
-                return
+            grouped = {}
+            for k in have:
+                grouped.setdefault(self._bag_category_for(k), []).append(k)
+            cat_labels = [label for label, _ in self.BAG_CATEGORIES if label in grouped]
 
-            item_name = list(have.keys())[choice]
+            if len(cat_labels) <= 1:
+                active_keys = list(have.keys())
+            else:
+                cat_opts = [f"{label}  {C.GRAY}({len(grouped[label])} item{'s' if len(grouped[label]) != 1 else ''}){C.RESET}"
+                            for label in cat_labels]
+                cat_opts.append("← Close Bag")
+                cat_choice = menu("Items:", cat_opts)
+                if cat_choice == len(cat_labels):
+                    return
+                active_keys = grouped[cat_labels[cat_choice]]
+
+            opts = [f"{k} x{have[k]}  {C.GRAY}({ITEMS[k]['desc']}){C.RESET}"
+                    for k in active_keys]
+            opts.append("← Back" if len(cat_labels) > 1 else "← Close Bag")
+            choice = menu("Items:", opts)
+            if choice == len(active_keys):
+                continue
+
+            item_name = active_keys[choice]
             idata     = ITEMS[item_name]
 
             if idata["type"] == "heal":

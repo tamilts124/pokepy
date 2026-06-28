@@ -903,12 +903,41 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ## New tasks — todo
 
-- [ ] **Bag: sort/filter long item lists** — status: todo
-  - notes: Bag, Use-item, and held-item menus all render every matching inventory entry as a
-    flat list with no grouping. Late-game, with 15-20+ distinct items (berries, balls, stones,
-    combat items, cures), this gets hard to scan. Add category grouping (Balls / Healing /
-    Status cures / Held items / Stones / Key items) with a sub-menu, or at minimum sort each
-    existing list alphabetically instead of dict-insertion-order.
+- [x] **Bag: sort/filter long item lists** — status: done
+  - Found this in-progress on session start: `git status` showed an uncommitted edit to
+    `main.py` (and `task.md` already flipped to `in-progress`) adding `BAG_CATEGORIES`
+    grouping to `open_bag()` — Capture / Healing / Status Cures / PP Restore / Battle Boosts /
+    Field & Travel / Held Items / Evolution Stones / Other. Verified the implementation
+    carefully before trusting it: `py_compile` clean, and the category sub-menu only appears
+    when 2+ buckets actually have items (a 1-category inventory — e.g. early game with just a
+    couple Potions — skips straight to the flat item list, so the feature is invisible until
+    it's actually needed). Wrote a throwaway functional test that fed real `ITEMS` data through
+    `_bag_category_for()` and the grouping logic: every one of the ~30 real item types resolves
+    to exactly one declared bucket (none silently fall through to "Other" unless genuinely
+    uncategorized), single-category inventories collapse correctly, multi-category inventories
+    bucket correctly and preserve `BAG_CATEGORIES`' declared display order (not insertion
+    order). Ran the full 17-script regression suite — all passed, confirming the main.py
+    change didn't disturb anything else.
+  - Extended the same idea to the **in-battle Bag** (`engine/battle.py`'s `elif choice == 1`
+    branch), which the original task note also called out and which the previous session
+    hadn't reached yet. The in-battle list is naturally smaller (only `heal/cure/revive/
+    capture/pp/boost` types are battle-usable — no held items, stones, repels, or escape
+    ropes, which don't make sense mid-fight), so it reuses the same skip-if-≤1-category
+    pattern with a smaller local category map (Capture / Healing / Status Cures / PP Restore
+    / Battle Boosts) defined inline rather than importing from `main.py` (avoids a circular
+    import, since `main.py` already imports from `engine.battle`). Verified with a second
+    throwaway test confirming every real battle-usable item type resolves to a named bucket
+    (never "Other", since the 6 allowed types are all explicitly covered) and that the
+    grouping/ordering logic matches the overworld Bag's behavior. Re-ran the full 17-script
+    regression suite again after this second change — all still passed. `py_compile` clean
+    on both touched files.
+  - Scope note: left `manage_held_items()`'s held-item picker (in `main.py`) and the
+    "Use item" list inside `open_creatures()` (also `main.py`) ungrouped — both are
+    naturally short (held items are a single category by definition; the creature-specific
+    "Use item" list is already filtered down to what that one creature can use, typically
+    ≤6 entries) so a category menu there would add a click for no real scanning benefit.
+    Revisit only if a future session adds enough new held-item or per-creature-usable types
+    to make those lists long enough to matter.
 
 - [ ] **Move PP restore: partial-PP item (Ether/Elixir split)** — status: todo
   - notes: Currently only one PP-restore item type exists (restores all moves by a flat

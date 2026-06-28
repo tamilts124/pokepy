@@ -1251,14 +1251,43 @@ def run_battle(player_c, enemy_c, inventory, team,
                 slow_print(f"{C.YELLOW}No usable items!{C.RESET}")
                 continue
 
-            bag_opts = [f"{item} x{qty}  {C.GRAY}({ITEMS[item]['desc']}){C.RESET}"
-                        for item, qty in usable.items()]
+            # Group into categories when there are enough usable items that a flat
+            # list gets hard to scan -- mirrors the overworld Bag's grouping (main.py).
+            _battle_bag_cats = [
+                ("🎯  Capture",      {"capture"}),
+                ("💊  Healing",      {"heal", "revive"}),
+                ("✨  Status Cures",     {"cure"}),
+                ("🔋  PP Restore",   {"pp"}),
+                ("📈  Battle Boosts", {"boost"}),
+            ]
+            _grouped = {}
+            for _k in usable:
+                _itype = ITEMS.get(_k, {}).get("type", "")
+                _label = next((lbl for lbl, types in _battle_bag_cats if _itype in types), "🍬  Other")
+                _grouped.setdefault(_label, []).append(_k)
+            _cat_labels = [lbl for lbl, _ in _battle_bag_cats if lbl in _grouped]
+            if "🍬  Other" in _grouped:
+                _cat_labels.append("🍬  Other")
+
+            if len(_cat_labels) <= 1:
+                active_keys = list(usable.keys())
+            else:
+                _cat_opts = [f"{lbl}  {C.GRAY}({len(_grouped[lbl])} item{'s' if len(_grouped[lbl]) != 1 else ''}){C.RESET}"
+                             for lbl in _cat_labels]
+                _cat_opts.append("← Back")
+                _cc = menu("Use item:", _cat_opts)
+                if _cc == len(_cat_labels):
+                    continue
+                active_keys = _grouped[_cat_labels[_cc]]
+
+            bag_opts = [f"{item} x{usable[item]}  {C.GRAY}({ITEMS[item]['desc']}){C.RESET}"
+                        for item in active_keys]
             bag_opts.append("← Back")
             bc = menu("Use item:", bag_opts)
-            if bc == len(usable):
+            if bc == len(active_keys):
                 continue
 
-            item_name = list(usable.keys())[bc]
+            item_name = active_keys[bc]
             idata = ITEMS[item_name]
             inventory[item_name] -= 1
             took_turn = True
