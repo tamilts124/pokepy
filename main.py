@@ -3,6 +3,18 @@ import sys
 import os
 import time
 
+# ── Force UTF-8 stdout/stderr ──────────────────────────────
+# Windows consoles often default to a legacy codepage (cp1252) that can't
+# encode the box-drawing characters / emoji used throughout the UI, which
+# crashes the game on the very first print before the player sees a menu.
+# Reconfigure to UTF-8 with a safe fallback so the game never crashes on
+# encoding alone, even on an un-configured cmd.exe.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 from engine.core    import (Creature, save_game, load_game, list_save_slots, random_wild)
 from data.creatures import (CREATURES, ITEMS, TOWNS, WILD_AREAS,
                              ELITE_FOUR, REQUIRED_BADGES, RANDOM_TRAINERS,

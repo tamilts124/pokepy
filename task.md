@@ -90,6 +90,22 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ---
 
+## Session 2 — Verification audit (2026-06)
+
+- [x] **Bug: instant crash on default Windows console (cp1252)** — status: done
+  - Verified all "done" tasks against real code (compiled cleanly, no TODO/stub/conflict
+    markers found) and confirmed working tree was clean / in sync with previous session.
+  - Found via actual launch test: `UnicodeEncodeError` on the very first banner print
+    (box-drawing + emoji characters) when stdout uses the legacy `cp1252` codepage that
+    classic `cmd.exe` defaults to on Windows — game crashed before showing any menu, with
+    no workaround short of manually running `chcp 65001` first. Not caught by any previous
+    session because dev/testing happened in a UTF-8-capable terminal.
+  - Fix: `sys.stdout.reconfigure(encoding="utf-8", errors="replace")` /
+    `sys.stderr.reconfigure(...)` added at the very top of `main.py`, wrapped in try/except
+    for safety. Re-verified: banner, town menu, and gym intro now render fully with no
+    encoding crash under a simulated cp1252 environment; only remaining EOF stems from the
+    test harness having no stdin attached, not from the game itself.
+
 ## New tasks — todo
 
 - [x] **Catch rate feedback in battle** — status: done (commit a74d4b9)
