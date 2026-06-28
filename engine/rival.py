@@ -314,7 +314,11 @@ def run_rival_encounter(game, encounter):
             game.award_exp(player_c, enemy)
             alive_after = [c for c in game.team if c.is_alive()]
             if alive_after and not player_c.is_alive():
-                player_c = alive_after[0]
+                player_c = game._pick_lead(
+                    fainted_name=getattr(player_c, 'nickname', None) or player_c.name)
+                if player_c is None:
+                    battle_result = "lose"
+                    break
         elif result == "lose":
             battle_result = "lose"
             break
@@ -448,7 +452,11 @@ def run_rival_rematch(game):
             game.award_exp(player_c, enemy)
             alive_after = [c for c in game.team if c.is_alive()]
             if alive_after and not player_c.is_alive():
-                player_c = alive_after[0]
+                player_c = game._pick_lead(
+                    fainted_name=getattr(player_c, 'nickname', None) or player_c.name)
+                if player_c is None:
+                    battle_result = "lose"
+                    break
         elif result == "lose":
             battle_result = "lose"
             break
