@@ -54,6 +54,8 @@ TYPE_COLORS = {
     "dark":     C.GRAY,
     "normal":   C.WHITE,
     "bug":      C.GREEN,
+    "dragon":   C.BLUE,
+    "steel":    C.WHITE,
 }
 
 def clear():
@@ -490,5 +492,64 @@ def show_world_map(current_town, badges):
     else:
         print(f"  No gym in {current_town}.")
     print(f"  Wild area  : {C.CYAN}{wild}{C.RESET}")
+    print()
+    press_enter()
+
+
+# ─────────────────────────────────────────────
+#  TYPE EFFECTIVENESS CHART  (reference menu)
+# ─────────────────────────────────────────────
+_CHART_TYPES = ["fire", "water", "grass", "electric", "ice", "rock", "ground",
+                "psychic", "ghost", "poison", "flying", "dark", "normal",
+                "bug", "dragon", "steel"]
+
+
+def _chart_abbr(t):
+    return t[:3].upper()
+
+
+def _chart_cell(eff):
+    """Plain (uncoloured) symbol + the colour to wrap it in, matching the
+    same ▲/▼/✗/– hint symbols used on the in-battle fight menu."""
+    if eff >= 2:
+        return "▲", C.YELLOW
+    elif eff == 0:
+        return "✗", C.GRAY
+    elif eff < 1:
+        return "▼", C.BLUE
+    return "·", C.GRAY
+
+
+def show_type_chart():
+    """Full type-vs-type effectiveness reference grid — rows attack,
+    columns defend. Pure reference UI, no battle state required."""
+    from data.creatures import TYPE_CHART
+    clear()
+    banner("  📘  TYPE CHART  ", C.CYAN)
+
+    print(f"\n  {C.GRAY}Rows = attacking type   •   Columns = defending type{C.RESET}")
+    print(f"  {C.YELLOW}▲{C.RESET} super effective    "
+          f"{C.BLUE}▼{C.RESET} not very effective    "
+          f"{C.GRAY}✗{C.RESET} immune    "
+          f"{C.GRAY}·{C.RESET} neutral\n")
+
+    LABEL_W = 5
+    CELL_W  = 4
+
+    header = " " * LABEL_W + "".join(f"{_chart_abbr(t):<{CELL_W}}" for t in _CHART_TYPES)
+    print(f"  {C.BOLD}{header}{C.RESET}")
+
+    for atk in _CHART_TYPES:
+        row_label = f"{_chart_abbr(atk):<{LABEL_W}}"
+        cells = []
+        for dfd in _CHART_TYPES:
+            eff = TYPE_CHART.get(atk, {}).get(dfd, 1.0)
+            sym, color = _chart_cell(eff)
+            cells.append(f"{color}{sym.center(CELL_W)}{C.RESET}")
+        print(f"  {C.BOLD}{row_label}{C.RESET}" + "".join(cells))
+
+    print()
+    print(f"  {C.GRAY}e.g. row FIR, column GRA → {C.RESET}{C.YELLOW}▲{C.RESET}"
+          f"{C.GRAY}: Fire-type moves are super effective against Grass-types.{C.RESET}")
     print()
     press_enter()

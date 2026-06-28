@@ -28,7 +28,7 @@ from engine.rival   import (RivalState, trigger_rival_if_due,
 from ui.display     import (C, clear, slow_print, banner, section,
                              hp_bar, creature_card, team_summary,
                              menu, confirm, pause, press_enter,
-                             show_world_map)
+                             show_world_map, show_type_chart)
 
 SEASONS = ["Spring", "Summer", "Autumn", "Winter"]
 SEASON_COLORS = {"Spring": C.GREEN, "Summer": C.YELLOW, "Autumn": C.RED, "Winter": C.CYAN}
@@ -2274,6 +2274,7 @@ class Game:
                 "🎒  Bag",
                 "👥  Creatures",
                 "📖  Pokédex",
+                "📘  Type Chart",
                 "🏅  Badges",
                 "📊  Trainer Card",
                 "🗺  World Map",
@@ -2332,6 +2333,8 @@ class Game:
                 self.open_creatures()
             elif label == "Pokédex":
                 self.open_pokedex()
+            elif label == "Type Chart":
+                show_type_chart()
             elif label == "Badges":
                 self.open_badges()
             elif label == "Trainer Card":

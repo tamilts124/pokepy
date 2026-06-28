@@ -505,15 +505,40 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     confirmed it renders correctly end-to-end with no traceback (the only EOFError seen was the
     scripted input list running out, not a game fault — same caveat noted in Session 2/5).
 
+- [x] **Type effectiveness chart — in-game reference menu** — status: done
+  - The battle UI already showed per-move effectiveness hints (▲▲/▼/✗) against the current
+    foe, but there was no way to see the *full* type chart at a glance. Added a
+    "📘  Type Chart" option to the top-level town menu (between Pokédex and Badges).
+  - Implementation: `show_type_chart()` in `ui/display.py` renders all 16 in-use creature
+    types (the exact set found in `data/creatures.py`, not a generic 18-type list — no
+    creature is Fighting or Fairy type in this game, so those columns would've been pure
+    clutter) as a 16×16 attacker-rows × defender-columns grid, reading `TYPE_CHART` directly
+    so the reference can never drift out of sync with the real battle math. Reused the exact
+    same hint symbols/colors already used in the in-battle fight menu (`▲` yellow super
+    effective, `▼` blue not very effective, `✗` gray immune, `·` gray neutral) for visual
+    consistency rather than inventing a new color scheme. Also filled in the two missing
+    `TYPE_COLORS` entries (`dragon`, `steel`) in `ui/display.py` while in there — both types
+    were falling back to plain white in every other screen that uses `TYPE_COLORS` (creature
+    cards, fight-menu move tags), a small pre-existing gap directly relevant to this feature.
+  - Verified: `_test_type_chart.py` — (1) the chart's 16-type list exactly matches the set of
+    types actually used across all 38 creatures; (2) 8 sample (attacker, defender) pairs
+    spanning super/resisted/immune/neutral cases render the exact symbol+color implied by
+    `TYPE_CHART`'s real values; (3) every rendered row (header + 16 data rows), with ANSI
+    codes stripped, is the same visible width — confirms the grid stays column-aligned;
+    (4) the menu option string, import, and `label == "Type Chart"` handler are all actually
+    wired into `town_loop()` in main.py, not just defined and orphaned; (5) `py_compile` clean
+    on both touched files. Also manually inspected the rendered grid output and spot-checked
+    several rows by hand against `TYPE_CHART` (e.g. Fire row: resists itself/Water/Rock,
+    super effective vs Grass/Ice — matches).
+
 ## New tasks — todo
 
-- [ ] **Type effectiveness chart — in-game reference menu** — status: todo
-  - The battle UI already shows per-move effectiveness hints (▲▲/▼/✗) against the current
-    foe, but there's no way to see the *full* type chart at a glance — players have to infer
-    the whole matchup table indirectly, one foe at a time, across many battles. Add a
-    "📘 Type Chart" option (Trainer Card menu or top-level town menu) that renders the full
-    type-vs-type matchup grid from `engine/battle.py`'s `TYPE_CHART`, color-coded
-    (green = super effective, red = resisted, gray/✗ = immune, default = neutral). Pure
-    reference UI, no new mechanics — should make team-building and matchup planning easier,
-    especially before gym fights.
+- [ ] **Friendship / affection system** — status: todo
+  - Creatures that stay on the team and battle a lot (or are given Berries/held items, win
+    streaks, etc.) build up a hidden `friendship` stat. At high friendship, give a small but
+    real mechanical payoff — e.g. a slightly higher crit chance, or a "the foe's attack missed
+    because of your bond!" style flavor save once per battle — so loyalty briefly matters
+    without needing a full breeding/egg system. Persist via `to_dict`/`from_dict` like other
+    per-creature fields (nature, nickname, is_shiny). Should feel like a natural follow-on to
+    the nickname system and held-item bonding already in the game.
 
