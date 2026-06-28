@@ -356,7 +356,12 @@ class Game:
             slow_print(f"  {C.GREEN}● Caught{C.RESET}{shiny_note}")
         else:
             slow_print(f"  {C.YELLOW}◐ Seen, not yet caught{C.RESET}")
-        slow_print(f"  {C.GRAY}{data.get('desc', '')}{C.RESET}\n")
+        # Wrap lore text at 70 chars so it reads cleanly in the terminal
+        import textwrap as _tw
+        _desc = data.get('desc', '')
+        for _line in _tw.wrap(_desc, width=70):
+            slow_print(f"  {C.GRAY}{_line}{C.RESET}", 0.01)
+        print()
 
         if caught:
             # Full info once the player actually owns one.
@@ -935,7 +940,9 @@ class Game:
                     print(f"  Nature  : {nat_str}")
                 if c.held_item:
                     print(f"  Held    : {C.YELLOW}{c.held_item}{C.RESET}")
-                print(f"  {C.GRAY}{CREATURES[c.name]['desc']}{C.RESET}")
+                import textwrap as _tw
+                for _line in _tw.wrap(CREATURES[c.name]['desc'], width=70):
+                    print(f"  {C.GRAY}{_line}{C.RESET}")
                 print()
 
                 # HP + EXP
@@ -2396,12 +2403,14 @@ def new_game(g):
     section("CHOOSE YOUR STARTER")
     slow_print("  Four creatures await their trainer...\n")
     starters = ["Flambit", "Leafling", "Aquapup", "Drakling"]
+    import textwrap as _tw
     for s in starters:
         d = CREATURES[s]
         t = "/".join(d["type"])
-        print(f"  {C.BOLD}{s:<12}{C.RESET} [{C.CYAN}{t:<15}{C.RESET}]  "
-              f"{C.GRAY}{d['desc']}{C.RESET}")
-    print()
+        print(f"  {C.BOLD}{s:<12}{C.RESET} [{C.CYAN}{t:<15}{C.RESET}]")
+        for _line in _tw.wrap(d['desc'], width=66):
+            print(f"      {C.GRAY}{_line}{C.RESET}")
+        print()
     opts = [f"{s}  [{'/'.join(CREATURES[s]['type'])}]" for s in starters]
     idx  = menu("Your starter:", opts)
     starter_name = starters[idx]

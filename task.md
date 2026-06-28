@@ -460,9 +460,60 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     counter tracking with real moves from MOVES dict (Water Gun counted as super vs fire,
     status move correctly excluded), source-level presence of all three counter increments.
 
-- [ ] **Creature glossary / lore entries** — status: todo
-  - Each creature species already has a short `desc` in creatures.py used only by the Pokédex
-    detail view. Expand to 2-3 sentence lore blurbs stored in creatures.py, shown in the
-    Pokédex detail view (replacing the current one-liner). Purely flavor — no new mechanics,
-    just makes the world feel richer when browsing caught creatures.
+## Session 9 — Resume from mid-task cutoff (2026-06)
+
+- [x] **Creature glossary / lore entries** — status: done
+  - Found this half-finished on session start: `git status` showed uncommitted edits to
+    `data/creatures.py` and `main.py`, plus two untracked helper scripts (`_patch_lore.py`,
+    `_test_lore.py`) — the previous session's own lore-expansion patch script and its
+    verification test, left sitting there unrun. Running `_test_lore.py` immediately
+    reproduced the exact failure the previous session would have hit: `FAIL: short lore
+    entries: [('Flamclaw', 33), ('Infernox', 34)]`.
+  - Root cause: for these 2 of 38 creatures (out of 38 total), the in-place line edit that
+    inserted the new long-form lore line landed on the wrong source line — it overwrote the
+    `"catch_rate"/"ability"` line for Flamclaw and the `"evolution"` line for Infernox instead
+    of the old one-line `"desc"` field, leaving each entry with **two** `"desc"` keys in the
+    same dict literal. Since Python dict literals silently let the later key win, the new lore
+    text was dead on arrival — `CREATURES["Flamclaw"]["desc"]` still evaluated to the old
+    33-character one-liner — while `catch_rate`/`ability` (Flamclaw) and `evolution` (Infernox)
+    were missing entirely (confirmed via a throwaway audit script: `MISSING: [('Flamclaw',
+    'catch_rate'), ('Flamclaw', 'ability'), ('Infernox', 'evolution')]`). `catch_rate`/`ability`
+    being silently absent would have broken capture-rate math and ability lookups for that
+    species the moment a player caught or battled one.
+  - Fix: rewrote both dict blocks cleanly — restored `"catch_rate": 45, "ability": "Blaze"` for
+    Flamclaw and `"evolution": {}` for Infernox, removed the dead duplicate `"desc"` lines, and
+    kept the new long-form lore text the previous session had written (it was good prose, just
+    mis-inserted).
+  - Found a second, related gap while reviewing where `desc` is actually displayed: the previous
+    session's task note assumed `desc` was "used only by the Pokédex detail view," but it's also
+    printed in two other places that were never updated for the new ~250-character lore length —
+    `open_creatures()`'s per-creature detail card and the starter-selection screen in
+    `new_game()`. Both printed `desc` as a single unwrapped f-string segment, which would have
+    rendered as one giant unbroken line the moment a player opened either screen. Fixed both with
+    the same `textwrap.wrap(..., width=66-70)` pattern already used in the Pokédex view, just
+    formatted to fit each screen's existing layout (multi-line under the name/type header for the
+    starter screen; multi-line under the ability/nature/held-item block for the creature card).
+  - Verified: `py_compile`/`ast.parse` clean on all touched files. Re-ran `_test_lore.py` —
+    now passes (`PASS: all 38 creatures have desc >= 80 chars`, avg 266 chars). Wrote
+    `_verify_lore_fix.py`: drives `Game._show_pokedex_entry()` directly for both previously-broken
+    species and asserts the new lore text appears and the stale short text does not; asserts
+    `CREATURES["Flamclaw"]["catch_rate"]/["ability"]` and `CREATURES["Infernox"]["evolution"]`
+    are restored; asserts both newly-discovered unwrapped display sites now wrap. All passed.
+    Manually inspected the rendered wrap output for all 4 starters plus a sample evolved form —
+    reads cleanly at the terminal widths used. Also ran a full subprocess launch of `main.py`
+    with scripted stdin through an existing save's Continue → town menu → Shop → Buy flow;
+    confirmed it renders correctly end-to-end with no traceback (the only EOFError seen was the
+    scripted input list running out, not a game fault — same caveat noted in Session 2/5).
+
+## New tasks — todo
+
+- [ ] **Type effectiveness chart — in-game reference menu** — status: todo
+  - The battle UI already shows per-move effectiveness hints (▲▲/▼/✗) against the current
+    foe, but there's no way to see the *full* type chart at a glance — players have to infer
+    the whole matchup table indirectly, one foe at a time, across many battles. Add a
+    "📘 Type Chart" option (Trainer Card menu or top-level town menu) that renders the full
+    type-vs-type matchup grid from `engine/battle.py`'s `TYPE_CHART`, color-coded
+    (green = super effective, red = resisted, gray/✗ = immune, default = neutral). Pure
+    reference UI, no new mechanics — should make team-building and matchup planning easier,
+    especially before gym fights.
 

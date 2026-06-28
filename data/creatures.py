@@ -98,7 +98,8 @@ CREATURES = {
         "evolution": {16: "Flamclaw"},
         "stone_evolution": {"Fire Stone": "Flamclaw"},
         "catch_rate": 45, "ability": "Blaze",
-        "desc": "A tiny lizard with a burning tail.",
+        "desc": "A tiny lizard whose tail blazes with a flame that mirrors its emotions. Brave and energetic, it rushes into fights before thinking twice. Trainers say its tail flares brightest in the heat of battle.",
+
         "held_item_pool": [("Oran Berry", 0.15), ("Sitrus Berry", 0.05)],
     },
     "Flamclaw": {
@@ -107,7 +108,7 @@ CREATURES = {
                           25: ["Flamethrower"], 31: ["Lava Plume"]},
         "evolution": {36: "Infernox"},
         "catch_rate": 45, "ability": "Blaze",
-        "desc": "Its claws burn red-hot in battle.",
+        "desc": "Its curved claws burn red-hot during combat, searing whatever they rake across. The heat is so intense that raindrops hiss to steam the moment they touch its body. Rival trainers dread facing one in close quarters.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Lum Berry", 0.05)],
     },
     "Infernox": {
@@ -116,9 +117,10 @@ CREATURES = {
                           42: ["Lava Plume"], 48: ["Swords Dance"], 50: ["Fire Blast"]},
         "evolution": {},
         "catch_rate": 45, "ability": "Blaze",
-        "desc": "A fearsome dragon of living flame.",
+        "desc": "A fearsome creature of living flame, shaped like a towering dragon wrapped in fire. Ancient texts call it the Infernal Sovereign — a beast whose roar has been known to ignite forests from a kilometre away. Only the most seasoned trainers dare to challenge one.",
         "held_item_pool": [("Life Orb", 0.08), ("Lum Berry", 0.10)],
     },
+
     "Leafling": {
         "type": ["grass"], "base_stats": [45, 49, 49, 65, 55, 45],
         "moves_learned": {1: ["Tackle", "Growl"], 7: ["Vine Whip"], 13: ["Poison Sting"],
@@ -126,7 +128,7 @@ CREATURES = {
         "evolution": {16: "Thornbush"},
         "stone_evolution": {"Leaf Stone": "Thornbush"},
         "catch_rate": 45, "ability": "Overgrow",
-        "desc": "A small plant creature full of curiosity.",
+        "desc": "A small plant creature bursting with curiosity and wanderlust, always poking its vines into places they don't belong. The leaves on its back absorb sunlight constantly, giving it a wellspring of gentle energy. It smells faintly of fresh rain.",
         "held_item_pool": [("Oran Berry", 0.20), ("Petaya Berry", 0.08)],
     },
     "Thornbush": {
@@ -135,7 +137,7 @@ CREATURES = {
                           27: ["Solar Beam"], 33: ["Vine Lash"]},
         "evolution": {36: "Goliavine"},
         "catch_rate": 45, "ability": "Overgrow",
-        "desc": "Its thorns drip with paralysing sap.",
+        "desc": "Its thorns are tipped with a paralysing sap that it shakes loose when threatened. The vines running along its arms have grown thick and ropey, strong enough to uproot small trees. Rival creatures learn to keep their distance.",
         "held_item_pool": [("Oran Berry", 0.15), ("Salac Berry", 0.06)],
     },
     "Goliavine": {
@@ -144,7 +146,7 @@ CREATURES = {
                           40: ["Swords Dance"], 42: ["Earthquake"], 50: ["Solar Beam"]},
         "evolution": {},
         "catch_rate": 45, "ability": "Overgrow",
-        "desc": "A towering jungle guardian.",
+        "desc": "A towering jungle guardian wreathed in dense vines and oversized leaves that block out the sun. Village elders claim that forests grow back overnight wherever a Goliavine has slept. Its presence is said to drive off poachers and predators alike.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Scope Lens", 0.05)],
     },
     "Aquapup": {
@@ -154,7 +156,7 @@ CREATURES = {
         "evolution": {16: "Tidalfin"},
         "stone_evolution": {"Water Stone": "Tidalfin"},
         "catch_rate": 45, "ability": "Torrent",
-        "desc": "A happy water pup that loves to splash.",
+        "desc": "A cheerful water pup that splashes anything within reach just to see the ripples. Its round, rubbery body makes it nearly impossible to hold onto once it gets wet. Coastal villages keep them around for their uncanny ability to find underground springs.",
         "held_item_pool": [("Oran Berry", 0.20)],
     },
     "Tidalfin": {
@@ -163,7 +165,7 @@ CREATURES = {
                           32: ["Ice Beam"]},
         "evolution": {36: "Abyssking"},
         "catch_rate": 45, "ability": "Torrent",
-        "desc": "Swims faster than the eye can follow.",
+        "desc": "Evolved fins let it cut through water faster than the eye can follow, leaving a glittering wake of bubbles. It spends most of its time at river mouths, leaping clear out of the water to snatch insects mid-flight. Sailors consider it a good omen.",
         "held_item_pool": [("Sitrus Berry", 0.12), ("Shell Bell", 0.05)],
     },
     "Abyssking": {
@@ -172,7 +174,7 @@ CREATURES = {
                           42: ["Crunch"], 50: ["Hydro Pump"]},
         "evolution": {},
         "catch_rate": 45, "ability": "Torrent",
-        "desc": "Ruler of the deep ocean.",
+        "desc": "Ruler of the deep ocean, it dives to crushing depths where no light reaches and the pressure would flatten a boulder. Its roar echoes through submarine canyons and sends entire schools of fish fleeing for the shallows. No creature disputes its authority beneath the waves.",
         "held_item_pool": [("Shell Bell", 0.08), ("Lum Berry", 0.10)],
     },
     # --- WILD ---
@@ -181,7 +183,7 @@ CREATURES = {
         "moves_learned": {1: ["Tackle", "Poison Sting"], 8: ["Web Shot"], 14: ["Leech Life"]},
         "evolution": {10: "Hornwing"},
         "catch_rate": 255, "ability": "Poison Touch",
-        "desc": "A common bug found in tall grass.",
+        "desc": "A common bug found in tall grass, small enough to overlook but persistent enough to annoy. Its tiny stinger can deliver a mild toxin that causes numbness for an hour. Farmers tolerate them because they also pollinate crops while wandering.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Hornwing": {
@@ -190,7 +192,7 @@ CREATURES = {
                           22: ["Gust"], 30: ["Thunder"]},
         "evolution": {},
         "catch_rate": 120, "ability": "Poison Touch",
-        "desc": "Its wings buzz at high frequency.",
+        "desc": "Its wings beat at a frequency that produces a low, irritating hum audible from thirty metres away. The hardened horn on its head is used to bore through rotting wood in search of grubs. Despite its aggressive reputation, it rarely attacks unless its nest is threatened.",
         "held_item_pool": [("Sitrus Berry", 0.08), ("Scope Lens", 0.04)],
     },
     "Pebblur": {
@@ -198,7 +200,7 @@ CREATURES = {
         "moves_learned": {1: ["Tackle", "Rock Throw"], 10: ["Headbutt"], 18: ["Stomp"]},
         "evolution": {15: "Bouldrax"},
         "catch_rate": 200, "ability": "Rock Head",
-        "desc": "A rolling rock creature.",
+        "desc": "A rolling rock creature that tucks itself into a perfect sphere and bowls over anything in its path. Young ones are barely distinguishable from ordinary pebbles until they blink. Geologists sometimes accidentally carry them home in sample bags.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Bouldrax": {
@@ -207,7 +209,7 @@ CREATURES = {
                           25: ["Earthquake"], 35: ["Iron Tail"]},
         "evolution": {},
         "catch_rate": 90, "ability": "Thick Fat",
-        "desc": "Its body is as hard as granite.",
+        "desc": "Its granite-hard body can shrug off pickaxe blows without so much as a scratch. It communicates with others of its kind by striking the ground with a rhythmic thud that carries for kilometres underground. Quarry workers in Stonepeak say the tremors from their arguments register on seismographs.",
         "held_item_pool": [("Sitrus Berry", 0.08), ("Leftovers", 0.04)],
     },
     "Sparkit": {
@@ -217,7 +219,7 @@ CREATURES = {
         "evolution": {20: "Voltfang"},
         "stone_evolution": {"Thunder Stone": "Voltfang"},
         "catch_rate": 190, "ability": "Static",
-        "desc": "Sparks fly when it gets excited.",
+        "desc": "Sparks shower from its cheeks whenever it feels a strong emotion, which is frequently. During storms it climbs to high ground, raises its tail like a lightning rod, and seems to enjoy every bolt that strikes it. Children dare each other to pet one.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Voltfang": {
@@ -226,7 +228,7 @@ CREATURES = {
                           28: ["Thunderbolt"], 34: ["Agility"], 38: ["Thunder"]},
         "evolution": {},
         "catch_rate": 75, "ability": "Intimidate",
-        "desc": "A lightning beast with fangs of static.",
+        "desc": "A lightning beast whose fangs crackle with stored static — the bite doesn't just hurt, it numbs. Its Intimidate ability causes nearby creatures to reflexively lower their guard before the battle even begins. Championship trainers prize it for its terrifying combination of speed and raw power.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Choice Band", 0.05)],
     },
     "Ghostlet": {
@@ -234,7 +236,7 @@ CREATURES = {
         "moves_learned": {1: ["Tackle", "Shadow Ball"], 12: ["Confusion"], 20: ["Night Slash"]},
         "evolution": {25: "Spectrex"},
         "catch_rate": 90, "ability": "Levitate",
-        "desc": "Floats silently through walls.",
+        "desc": "Floats silently through walls and closed doors, peering at sleeping trainers with wide, curious eyes. It can't help itself — it's simply fascinated by the living. The cold spots it leaves behind linger for hours.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Spectrex": {
@@ -243,7 +245,7 @@ CREATURES = {
                           33: ["Night Slash"], 42: ["Shadow Ball"]},
         "evolution": {},
         "catch_rate": 45, "ability": "Levitate",
-        "desc": "Its gaze can paralyse any foe.",
+        "desc": "Its haunting gaze can lock up an opponent's nervous system before a single blow is thrown. The psychic energy it absorbed after evolving gives its attacks a spectral quality that unsettles even hardened opponents. Ghost-type trainers in Shadowmere consider it their signature creature.",
         "held_item_pool": [("Lum Berry", 0.10), ("Scope Lens", 0.05)],
     },
     "Iceling": {
@@ -252,7 +254,7 @@ CREATURES = {
                           20: ["Ice Beam"]},
         "evolution": {22: "Glacivore"},
         "catch_rate": 150, "ability": "Ice Body",
-        "desc": "Leaves frost wherever it treads.",
+        "desc": "Leaves a thin trail of frost wherever it treads, and the grass beneath its paws doesn't thaw until noon. In Frostholm, children track them by following the icy footprints across the cobblestones each morning. It is gentle by nature and rarely picks fights.",
         "held_item_pool": [("Oran Berry", 0.20)],
     },
     "Glacivore": {
@@ -261,7 +263,7 @@ CREATURES = {
                           30: ["Earthquake"], 40: ["Iron Tail"]},
         "evolution": {},
         "catch_rate": 60, "ability": "Thick Fat",
-        "desc": "A mighty ice beast of the tundra.",
+        "desc": "A mighty ice beast of the tundra, capable of surviving blizzards that would bury entire cabins overnight. Its thick fur traps a layer of super-cooled air against its skin, insulating it from even the sharpest electric attacks. Elder Blizara keeps one as a personal guardian.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Leftovers", 0.05)],
     },
     # ── NEW CREATURES ──
@@ -271,7 +273,7 @@ CREATURES = {
                           15: ["Slash"], 21: ["Crunch"]},
         "evolution": {20: "Drakonis"},
         "catch_rate": 45, "ability": "Dragon Skin",
-        "desc": "A small dragon with untapped potential.",
+        "desc": "A small dragon with untapped potential, all gangly limbs and oversized wings it hasn't grown into yet. It scorches the grass practicing Dragon Breath and never quite manages to land. What it lacks in power it makes up for in stubbornness.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Drakonis": {
@@ -280,7 +282,7 @@ CREATURES = {
                           28: ["Dragon Rage"], 35: ["Earthquake"]},
         "evolution": {40: "Wyrmax"},
         "catch_rate": 45, "ability": "Dragon Skin",
-        "desc": "A proud dragon feared by many.",
+        "desc": "A proud dragon feared by many in the mountain passes, its scales now dense enough to deflect arrows. It circles high on thermals for hours, surveying its territory before diving with terrifying speed. Trainers who earn its loyalty are rarely challenged twice.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Lum Berry", 0.05)],
     },
     "Wyrmax": {
@@ -289,7 +291,7 @@ CREATURES = {
                           46: ["Earthquake"], 54: ["Dragon Rage"]},
         "evolution": {},
         "catch_rate": 45, "ability": "Dragon Skin",
-        "desc": "The apex dragon. Its roar splits mountains.",
+        "desc": "The apex dragon, feared across the continent and revered in equal measure. Its roar alone has been known to split cliff faces and send avalanches cascading down mountainsides. Legends say that a trainer who tames a Wyrmax inherits its destiny.",
         "held_item_pool": [("Life Orb", 0.08), ("Choice Band", 0.06)],
     },
     "Steelbit": {
@@ -298,7 +300,7 @@ CREATURES = {
                           18: ["Headbutt"], 23: ["Iron Tail"]},
         "evolution": {25: "Ironclaw"},
         "catch_rate": 180, "ability": "Sturdy",
-        "desc": "A metallic creature with a hard shell.",
+        "desc": "A metallic creature whose shell is its most prized possession — it polishes it obsessively with its tongue. Despite its stubborn, cautious exterior, it forms deep bonds with patient trainers who earn its trust. Its Sturdy ability means it refuses to be knocked out in a single hit.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Ironclaw": {
@@ -307,7 +309,7 @@ CREATURES = {
                           33: ["Crunch"], 42: ["Rock Throw"]},
         "evolution": {},
         "catch_rate": 75, "ability": "Intimidate",
-        "desc": "Its claws can tear through solid rock.",
+        "desc": "Its claws can tear through solid rock with the casual ease of clipping a fingernail. Once it locks its grip on an opponent, no amount of struggling dislodges it — trainers have timed the hold at over four minutes. The mine shafts under Stonepeak are riddled with its claw marks.",
         "held_item_pool": [("Sitrus Berry", 0.08), ("Leftovers", 0.05)],
     },
     "Mudpup": {
@@ -316,7 +318,7 @@ CREATURES = {
                           14: ["Mud Bomb"], 19: ["Bubble Beam"]},
         "evolution": {20: "Sludgedon"},
         "catch_rate": 210, "ability": "Swift Swim",
-        "desc": "Loves to splash in muddy swamps.",
+        "desc": "Loves nothing more than diving headfirst into murky swamp water and emerging coated head to toe in fragrant mud. Its flat, paddle-like tail generates surprising currents underwater, letting it surf slow rivers without moving a limb. Fishermen in Marshfen find them tangled in their nets more often than actual fish.",
         "held_item_pool": [("Oran Berry", 0.18)],
     },
     "Sludgedon": {
@@ -325,7 +327,7 @@ CREATURES = {
                           28: ["Earthquake"], 36: ["Hydro Pump"]},
         "evolution": {},
         "catch_rate": 90, "ability": "Swift Swim",
-        "desc": "A massive swamp beast of immense strength.",
+        "desc": "A massive swamp beast of immense strength, capable of dragging river barges off sandbars with a single shrug. Its body is part mud, part water, and always warm from the decomposing organic material it wallows in. Locals say the wetland is healthiest where a Sludgedon has claimed territory.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Shell Bell", 0.04)],
     },
     "Skywing": {
@@ -334,7 +336,7 @@ CREATURES = {
                           15: ["Wing Attack"], 21: ["Quick Attack"]},
         "evolution": {22: "Stormcrest"},
         "catch_rate": 200, "ability": "Speed Boost",
-        "desc": "Soars high above the clouds.",
+        "desc": "Soars high above the clouds on rising thermals, sometimes for days at a time without landing. Its hollow bones are lighter than balsa wood, and even a strong gust can carry it dozens of kilometres off course. Fledglings are notoriously easy to lose on windy days.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Stormcrest": {
@@ -343,7 +345,7 @@ CREATURES = {
                           30: ["Thunderbolt"], 40: ["Thunder"]},
         "evolution": {},
         "catch_rate": 80, "ability": "Speed Boost",
-        "desc": "Rides thunderclouds and strikes like lightning.",
+        "desc": "Rides thunderclouds like a living conductor, absorbing lightning and redirecting it through its wings. The boom of its Speed Boost-accelerated dive sounds exactly like a thunderclap, which it uses for ambush. Stormwatchers in Mistveil claim sightings always precede three days of bad weather.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Choice Band", 0.05)],
     },
     "Venomfang": {
@@ -352,7 +354,7 @@ CREATURES = {
                           16: ["Bite"], 20: ["Supersonic"], 22: ["Night Slash"]},
         "evolution": {24: "Toxidra"},
         "catch_rate": 190, "ability": "Poison Touch",
-        "desc": "Its fangs drip with deadly venom.",
+        "desc": "Its hollow fangs drip with a paralytic venom potent enough to stop a horse mid-stride. It hunts by tracking body heat through dense foliage, striking before its prey even registers movement. The antidote for its bite is expensive and hard to find outside major towns.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Toxidra": {
@@ -361,7 +363,7 @@ CREATURES = {
                           28: ["Night Slash"], 32: ["Crunch"], 40: ["Shadow Ball"]},
         "evolution": {},
         "catch_rate": 75, "ability": "Intimidate",
-        "desc": "A venomous serpent lurking in dark places.",
+        "desc": "A venomous serpent that lurks in the dark places between walls and under floorboards, waiting for an opportunity. The dark energy it absorbed after evolving added a psychological edge: victims report feeling watched long after the creature has slunk away. Shadowmere's shadow-cult consider it sacred.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Scope Lens", 0.05)],
     },
     "Psychling": {
@@ -370,7 +372,7 @@ CREATURES = {
                           18: ["Quick Attack"], 22: ["Psywave"]},
         "evolution": {28: "Mindstrike"},
         "catch_rate": 100, "ability": "Levitate",
-        "desc": "Can read minds but is physically weak.",
+        "desc": "Can read surface thoughts but is physically frail — it relies entirely on confusion and mental pressure to avoid direct blows. It dislikes crowded places because the noise of a hundred minds at once gives it splitting headaches. Trainers with calm, focused minds are the only ones it trusts.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Mindstrike": {
@@ -379,7 +381,7 @@ CREATURES = {
                           32: ["Hypnosis"], 36: ["Night Slash"], 40: ["Agility"], 44: ["Thunder"]},
         "evolution": {},
         "catch_rate": 50, "ability": "Speed Boost",
-        "desc": "The fastest creature alive. Attacks at the speed of thought.",
+        "desc": "The fastest creature alive, capable of launching a full attack sequence before most opponents register it has moved. It perceives the entire battlefield as slow motion, which is why it seems so effortlessly composed even in chaos. Researchers have never managed to photograph one in motion without blur.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Scope Lens", 0.06)],
     },
     "Mushrump": {
@@ -388,7 +390,7 @@ CREATURES = {
                           18: ["Vine Lash"], 24: ["Solar Beam"]},
         "evolution": {26: "Fungolith"},
         "catch_rate": 160, "ability": "Spore Cloud",
-        "desc": "Releases spores that cause sleep.",
+        "desc": "Releases clouds of fine sleep-inducing spores whenever it feels threatened, which is unfortunately very often. The spores settle in a rough half-metre radius and remain viable for up to six hours. Campers near the deep forest have woken with no memory of the night before.",
         "held_item_pool": [("Oran Berry", 0.20)],
     },
     "Fungolith": {
@@ -397,7 +399,7 @@ CREATURES = {
                           34: ["Earthquake"], 42: ["Sleep Powder"]},
         "evolution": {},
         "catch_rate": 70, "ability": "Thick Fat",
-        "desc": "An ancient mushroom giant of the deep forest.",
+        "desc": "An ancient mushroom giant of the deep forest, so old that ferns and moss have taken root on its cap. Its massive bulk absorbs physical blows like a sponge — the Thick Fat ability is literal here, a dense layer of fatty tissue under the bark-like skin. Local legends say Fungolith sightings predict a bountiful harvest.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Leftovers", 0.06)],
     },
     "Shellcrab": {
@@ -406,7 +408,7 @@ CREATURES = {
                           18: ["Stomp"], 25: ["Surf"]},
         "evolution": {28: "Tideshell"},
         "catch_rate": 170, "ability": "Sturdy",
-        "desc": "Hides in its impenetrable shell.",
+        "desc": "Hides inside its impenetrable shell at the first sign of danger, clamping shut with a force that no tool in any trainer's kit can pry open. It feeds on shellfish and small fish it scoops up with its claws at low tide. The clicking sound it makes when content echoes through sea caves.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Tideshell": {
@@ -415,7 +417,7 @@ CREATURES = {
                           36: ["Earthquake"], 44: ["Hydro Pump"]},
         "evolution": {},
         "catch_rate": 65, "ability": "Sturdy",
-        "desc": "Its shell can withstand any attack.",
+        "desc": "Its shell has been reinforced by centuries of saltwater, tidal pressure, and the strikes of countless challengers until it rivals cast iron. Geologists have confirmed that the calcium lattice in its shell is unlike any naturally occurring mineral. Even Iron Tail barely leaves a mark.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Leftovers", 0.05)],
     },
     "Ashpup": {
@@ -424,7 +426,7 @@ CREATURES = {
                           18: ["Lava Plume"], 24: ["Slash"]},
         "evolution": {26: "Volcanix"},
         "catch_rate": 150, "ability": "Blaze",
-        "desc": "Born from volcanic ash. Always warm.",
+        "desc": "Born from volcanic ash, its body is always warm to the touch — even in a blizzard, its fur is never cold. It plays in lava flows the way other creatures play in puddles, emerging covered in cooling rock that it shakes off like mud. Miners keep them around mine entrances as living heat sensors.",
         "held_item_pool": [("Oran Berry", 0.15)],
     },
     "Volcanix": {
@@ -433,7 +435,7 @@ CREATURES = {
                           34: ["Fire Blast"], 42: ["Iron Tail"]},
         "evolution": {},
         "catch_rate": 60, "ability": "Blaze",
-        "desc": "A volcanic hound that erupts in battle.",
+        "desc": "A volcanic hound that erupts in battle, venting superheated gas from vents along its spine when its Blaze ability triggers. The ground beneath its feet cracks and scorches with every heavy step. Volcanologists claim that the tremors around Ashveil always intensify when wild Volcanix are active nearby.",
         "held_item_pool": [("Sitrus Berry", 0.10), ("Life Orb", 0.06)],
     },
 }
