@@ -107,10 +107,13 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     `main()`. Accumulated each save (session elapsed time). Old saves default to 0 gracefully.
     Trainer Card now shows "Playtime: Xh YYm" below Battles.
 
-- [ ] **Nuzlocke / challenge mode flag** — status: todo
-  - Add an optional "Nuzlocke" mode toggle at new-game: if enabled, any creature that faints is
-    permanently removed from the team (deleted, not just fainted). Show a dramatic death message.
-    Stored as `Game.nuzlocke: bool`, checked after every battle loss in `award_exp`.
+- [x] **Nuzlocke / challenge mode flag** — status: done
+  - `Game.nuzlocke` bool added; toggled at new-game with a clear warning prompt.
+  - `_nuzlocke_purge()` called at end of `award_exp()`: finds fainted creatures, prints a
+    dramatic bordered death notice, permanently removes them from `self.team`.
+  - If the last creature dies, game exits with a final message.
+  - `nuzlocke` persisted via `save_game()`/`load_game()` with `setdefault(False)` for old saves.
+  - Trainer Card shows `⚠ NUZLOCKE` mode banner when enabled.
 
 - [x] **Creature nickname system** — status: done (commit 8721b95)
   - After catching a wild creature, offer the player the option to give it a nickname (short

@@ -132,6 +132,7 @@ class Game:
         self.is_champion = False         # True once the Elite Four has been beaten at least once
         self.avatar      = "♂"          # trainer avatar symbol chosen at character creation
         self.visited_towns = set()       # towns the player has entered at least once
+        self.nuzlocke    = False         # if True, fainted creatures are permanently deleted
 
     # ── Achievement checker ────────────────────────────
     def _check_achievement(self, key):
@@ -303,6 +304,29 @@ class Game:
         return evolved
 
     # ── EXP & level-up handler ──────────────────
+    def _nuzlocke_purge(self):
+        """In Nuzlocke mode: permanently remove all fainted creatures from the team."""
+        if not getattr(self, 'nuzlocke', False):
+            return
+        dead = [c for c in self.team if not c.is_alive()]
+        if not dead:
+            return
+        for c in dead:
+            nick = getattr(c, 'nickname', None)
+            dname = f"{nick} ({c.name})" if nick else c.name
+            print()
+            slow_print(f"  {C.RED}{'━'*44}{C.RESET}")
+            slow_print(f"  {C.RED}  ✝  {C.BOLD}{dname}{C.RESET}{C.RED} has fallen.{C.RESET}")
+            slow_print(f"  {C.RED}     This is Nuzlocke. There is no coming back.{C.RESET}")
+            slow_print(f"  {C.RED}{'━'*44}{C.RESET}")
+            self.team.remove(c)
+        if not self.team:
+            print()
+            slow_print(f"  {C.RED}{C.BOLD}Your last creature has fallen.{C.RESET}")
+            slow_print(f"  {C.RED}Your adventure ends here.{C.RESET}")
+            press_enter()
+            sys.exit(0)
+
     def award_exp(self, winner, loser):
         from data.creatures import MOVES as MOVE_DATA
         base = loser.level * 5
@@ -401,6 +425,7 @@ class Game:
                                f"{C.BOLD}{val}{C.RESET}{C.MAGENTA}!  ✦{C.RESET}")
                     print('\a', end='', flush=True)
         press_enter()
+        self._nuzlocke_purge()
 
     def earn_money(self, amount):
         self.money += amount
@@ -430,7 +455,8 @@ class Game:
                   is_champion=getattr(self, 'is_champion', False),
                   avatar=getattr(self, 'avatar', '♂'),
                   visited_towns=getattr(self, 'visited_towns', set()),
-                  play_seconds=self.play_seconds)
+                  play_seconds=self.play_seconds,
+                  nuzlocke=getattr(self, 'nuzlocke', False))
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
 
@@ -1014,6 +1040,8 @@ class Game:
         slow_print(f"  Name    : {C.BOLD}{self.player_name}{C.RESET}  {C.CYAN}{getattr(self,'avatar','♂')}{C.RESET}")
         if getattr(self, 'is_champion', False):
             slow_print(f"  Title   : {C.YELLOW}★  Champion  ★{C.RESET}")
+        if getattr(self, 'nuzlocke', False):
+            slow_print(f"  Mode    : {C.RED}⚠  NUZLOCKE — creatures die forever{C.RESET}")
         slow_print(f"  Money   : {C.YELLOW}₽{self.money}{C.RESET}")
         slow_print(f"  Badges  : {len(self.badges)}/{len(REQUIRED_BADGES)}")
         slow_print(f"  Battles : {self.steps}")
@@ -2000,6 +2028,18 @@ def new_game(g):
     av_idx = menu("", avatar_opts)
     g.avatar = ["♂", "♀", "⚧"][av_idx]
 
+    # ── Nuzlocke mode ──
+    print()
+    slow_print(f"  {C.YELLOW}━━━  CHALLENGE MODE  ━━━{C.RESET}")
+    slow_print(f"  {C.RED}⚠  Nuzlocke:{C.RESET} If a creature faints, it is {C.BOLD}permanently lost{C.RESET}.")
+    slow_print(f"  {C.GRAY}Only for experienced trainers. This cannot be undone.{C.RESET}")
+    nuz_choice = menu("Enable Nuzlocke mode?", ["No  (normal game)", "Yes  (Nuzlocke — creatures die forever)"])
+    g.nuzlocke = (nuz_choice == 1)
+    if g.nuzlocke:
+        slow_print(f"  {C.RED}⚠  Nuzlocke mode ON. Every battle matters.{C.RESET}")
+    else:
+        slow_print(f"  {C.GREEN}Normal mode. Fainted creatures can be revived.{C.RESET}")
+
     # ── Rival name ──
     print()
     rival_name = input(f"  {C.YELLOW}Enter your rival's name (default: Gary):{C.RESET} ").strip()
@@ -2099,6 +2139,7 @@ def main():
         g.is_champion = saved.get("is_champion", False)
         g.avatar      = saved.get("avatar", "♂")
         g.visited_towns = set(saved.get("visited_towns", []))
+        g.nuzlocke    = saved.get("nuzlocke", False)
         # Load rival state
         from engine.rival import RivalState
         rival_data = saved.get("rival")
