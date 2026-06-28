@@ -507,6 +507,11 @@ ITEMS = {
     "Water Stone":   {"type": "stone", "price": 3000, "desc": "Evolves certain Water-type creatures"},
     "Leaf Stone":    {"type": "stone", "price": 3000, "desc": "Evolves certain Grass-type creatures"},
     "Thunder Stone": {"type": "stone", "price": 3000, "desc": "Evolves certain Electric-type creatures"},
+    # Repels — activate while exploring to keep wild creatures away for a number
+    # of would-be encounters. Does not affect trainer battles or hidden items.
+    "Repel":       {"type": "repel", "charges": 8,  "price": 400,  "desc": "Wards off wild creatures for 8 encounters"},
+    "Super Repel": {"type": "repel", "charges": 15, "price": 700,  "desc": "Wards off wild creatures for 15 encounters"},
+    "Max Repel":   {"type": "repel", "charges": 30, "price": 1200, "desc": "Wards off wild creatures for 30 encounters"},
 }
 
 TOWNS = {

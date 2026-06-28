@@ -180,3 +180,39 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
   - Added "🔃 Sort team" option to the Creatures menu alongside the existing "🔀 Reorder team".
     Sub-menu offers: Sort by Level (desc), Sort by HP % (least healthy first), Sort by Name (A→Z,
     respects nicknames). Implemented as `_sort_team_menu()` — sorts `self.team` in-place.
+
+## Session 3 — Resume after mid-task cutoff (2026-06)
+
+- [x] **Repel items** — status: done
+  - Found this half-finished on session start: `git diff` showed uncommitted work adding
+    Repel/Super Repel/Max Repel to `ITEMS`, a `Game.repel_steps` counter, the "repel" bag-use
+    branch, and the wild-encounter intercept in `explore()` — but several integration points
+    were missing, which would have made the feature unreachable or lossy in a real playthrough:
+    - Repels were never added to any shop's stock or `BADGE_BONUS_STOCK`, so they could never
+      actually be bought.
+    - Repels were missing from both `NON_HOLDABLE` sets in `main.py`, so they could be wasted
+      as a held item slot instead of a bag consumable.
+    - `repel_steps` was not persisted — `save_game()`/`load_game()` in `engine/core.py` didn't
+      accept/store/restore it, and the `Game.save()`/load-slot path in `main.py` didn't pass it
+      through, so an active Repel would silently reset to 0 on save/reload.
+  - Fixes applied: added Repel (1 badge), Super Repel (3 badges), Max Repel (5 badges) to
+    `BADGE_BONUS_STOCK`; added all three to both `NON_HOLDABLE` sets; added `repel_steps`
+    param to `save_game()`/`load_game()` (with `setdefault(0)` for old saves) and wired it
+    through `Game.save()` and the continue-slot load path.
+  - Verified: `py_compile` clean on all files. Built a scripted harness that monkeypatched
+    `random.random`/`input`/`time.sleep` to drive `Game.explore()` end-to-end — confirmed a
+    3-charge Repel blocks exactly 3 wild encounters, prints the correct "X encounters left"
+    message each time, prints "Repel wore off!" at 0, and that the very next encounter after
+    it expires correctly falls through to a real wild battle. A second harness drove
+    `visit_shop()` and confirmed Repel/Super Repel/Max Repel appear in the Buy list only once
+    the right badge count is reached. A third harness round-tripped `save_game`/`load_game`
+    and confirmed `repel_steps` survives a save/load cycle. Scope note: by design Repel only
+    blocks the regular wild-area "Walk further" encounter roll in `explore()` — it does not
+    suppress random trainer encounters or hidden item finds (matches the in-code comment left
+    by the previous session), and does not apply to fishing or grottos (separate, deliberate
+    activities, not passive wandering).
+
+- [ ] **Repel: visible charge counter while exploring** — status: todo
+  - `explore()`'s status line currently shows team HP bars but not whether a Repel is active.
+    Add a small indicator (e.g. "🛡 Repel: 4 left") next to the HP bars when
+    `self.repel_steps > 0`, so the player doesn't have to remember if one is running.

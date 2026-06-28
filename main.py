@@ -138,6 +138,7 @@ class Game:
         self.rival       = RivalState()
         self.achievements = []           # list of earned achievement keys
         self.season      = current_season()
+        self.repel_steps = 0             # remaining wild-encounter charges from a Repel item
         self._defeated_trainers = set()  # track rematched trainers by (area, name_hash)
         self.seen        = set()         # creature names encountered in the wild
         self.caught      = set()         # creature names successfully captured
@@ -472,7 +473,8 @@ class Game:
                   avatar=getattr(self, 'avatar', '♂'),
                   visited_towns=getattr(self, 'visited_towns', set()),
                   play_seconds=self.play_seconds,
-                  nuzlocke=getattr(self, 'nuzlocke', False))
+                  nuzlocke=getattr(self, 'nuzlocke', False),
+                  repel_steps=getattr(self, 'repel_steps', 0))
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
 
@@ -610,6 +612,19 @@ class Game:
                 slow_print(f"  {C.GREEN}{target.name}'s PP restored!{C.RESET}")
                 press_enter()
 
+            elif idata["type"] == "repel":
+                already_active = self.repel_steps > 0
+                self.repel_steps += idata["charges"]
+                self.inventory[item_name] -= 1
+                if already_active:
+                    slow_print(f"  {C.CYAN}🛡  You used another {item_name}! Effect extended — "
+                               f"now wards off wild creatures for {self.repel_steps} more "
+                               f"encounters.{C.RESET}")
+                else:
+                    slow_print(f"  {C.CYAN}🛡  You used a {item_name}! Wild creatures will avoid "
+                               f"you for the next {self.repel_steps} encounters while exploring.{C.RESET}")
+                press_enter()
+
             elif idata["type"] in ("capture", "escape", "boost"):
                 slow_print("  Use this during a battle or exploration.")
                 press_enter()
@@ -626,7 +641,8 @@ class Game:
                         "Cheer Up", "Full Heal",
                         "Elixir", "Max Elixir",
                         "X Attack", "X Defense",
-                        "Fire Stone", "Water Stone", "Leaf Stone", "Thunder Stone"}
+                        "Fire Stone", "Water Stone", "Leaf Stone", "Thunder Stone",
+                        "Repel", "Super Repel", "Max Repel"}
         clear()
         section("📦  HELD ITEMS")
         slow_print(f"  {C.GRAY}Give any compatible item to a creature to hold in battle.{C.RESET}\n")
@@ -693,6 +709,7 @@ class Game:
             "Elixir", "Max Elixir",
             "X Attack", "X Defense", "X Sp.Atk", "X Sp.Def", "X Speed",
             "Fire Stone", "Water Stone", "Leaf Stone", "Thunder Stone",
+            "Repel", "Super Repel", "Max Repel",
         }
 
         while True:
@@ -1113,6 +1130,9 @@ class Game:
             (2, "Water Stone"),
             (2, "Leaf Stone"),
             (2, "Thunder Stone"),
+            (1, "Repel"),
+            (3, "Super Repel"),
+            (5, "Max Repel"),
             (3, "Hyper Potion"),
             (3, "Revive"),
             (3, "Elixir"),
@@ -1508,84 +1528,94 @@ class Game:
 
             # ── Wild (50%) ──
             elif roll < 0.76:
-                # Badge-scaled levels: +5 per 2 badges earned
-                badge_bonus = (len(self.badges) // 2) * 5
-                # Build pool: base wild pool + any seasonal additions
-                seasonal_extras = SEASONAL_WILDS.get(self.season, {}).get(area_name, [])
-
-                # At night, ghost-types have higher weight
-                if night_bonus_areas() and random.random() < 0.35:
-                    ghost_pool = [("Ghostlet", 5, 30), ("Spectrex", 20, 45)]
-                    night_pool = [p for p in ghost_pool
-                                  if p[0] in [w[0] for w in WILD_AREAS.get(area_name, [])]]
-                    wild_pool_override = night_pool if night_pool else None
-                else:
-                    wild_pool_override = None
-
-                if wild_pool_override:
-                    name, lo, hi = random.choice(wild_pool_override)
-                    lv = random.randint(lo + badge_bonus, hi + badge_bonus)
-                    wild = Creature(name, lv, is_player=False)
-                elif seasonal_extras and random.random() < 0.30:
-                    # 30% chance to pull from the seasonal bonus pool
-                    name, lo, hi = random.choice(seasonal_extras)
-                    lv = random.randint(lo + badge_bonus, hi + badge_bonus)
-                    wild = Creature(name, lv, is_player=False)
-                    slow_print(f"  {SEASON_COLORS.get(self.season, C.GREEN)}"
-                               f"✦ A {self.season} visitor!{C.RESET}")
-                else:
-                    wild = random_wild(area_name, badge_bonus=badge_bonus)
-
-
-                if wild:
-                    slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
-                               f"{C.YELLOW} appeared! (Lv.{wild.level}){C.RESET}")
+                # ── Repel: cancels this wild encounter and burns one charge ──
+                if self.repel_steps > 0:
+                    self.repel_steps -= 1
+                    remaining = self.repel_steps
+                    slow_print(f"  {C.CYAN}🛡  Your Repel kept the wild creatures away. "
+                               f"({remaining} encounter{'s' if remaining != 1 else ''} left){C.RESET}")
+                    if remaining == 0:
+                        slow_print(f"  {C.YELLOW}Your Repel wore off!{C.RESET}")
                     press_enter()
-                    player_c = self._pick_lead(player_c)
-                    if player_c is None: break
+                else:
+                    # Badge-scaled levels: +5 per 2 badges earned
+                    badge_bonus = (len(self.badges) // 2) * 5
+                    # Build pool: base wild pool + any seasonal additions
+                    seasonal_extras = SEASONAL_WILDS.get(self.season, {}).get(area_name, [])
 
-                    result, obj = run_battle(player_c, wild, self.inventory,
-                                             self.team, wild=True, weather=weather)
-                    if result == "win":
-                        self.seen.add(wild.name)
-                        self._count_battle()
-                        self.award_exp(player_c, wild)
-                        self.earn_money(max(wild.level * 15, 100))
-                        alive_after = [c for c in self.team if c.is_alive()]
-                        if alive_after and not player_c.is_alive():
-                            player_c = alive_after[0]
-                        clear()
-                    elif result == "caught":
-                        self._count_battle()
-                        captured = obj
-                        self.seen.add(captured.name)
-                        self.caught.add(captured.name)
-                        # If the captured wild was holding an item, give it to the player
-                        if captured.held_item:
-                            stolen = captured.held_item
-                            self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
-                            captured.held_item = None
-                            slow_print(f"  {C.YELLOW}★  {captured.name} was holding {stolen}! You got it!{C.RESET}")
-                        if len(self.team) < 6:
-                            self.team.append(captured)
-                            slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
-                            self._check_achievement("first_catch")
-                            self._check_pokedex_completion()
-                            if len(self.team) == 6:
-                                self._check_achievement("team_full")
-                            # Offer nickname
-                            slow_print(f"  {C.GRAY}Give {captured.name} a nickname? (blank to skip):{C.RESET}")
-                            _nick = input("  > ").strip()[:10]
-                            if _nick:
-                                captured.nickname = _nick
-                                slow_print(f"  {C.GREEN}Nicknamed {C.BOLD}{_nick}{C.RESET}{C.GREEN}!{C.RESET}")
-                        else:
-                            slow_print(f"  {C.YELLOW}Team full (max 6)! "
-                                       f"{captured.name} was released.{C.RESET}")
+                    # At night, ghost-types have higher weight
+                    if night_bonus_areas() and random.random() < 0.35:
+                        ghost_pool = [("Ghostlet", 5, 30), ("Spectrex", 20, 45)]
+                        night_pool = [p for p in ghost_pool
+                                      if p[0] in [w[0] for w in WILD_AREAS.get(area_name, [])]]
+                        wild_pool_override = night_pool if night_pool else None
+                    else:
+                        wild_pool_override = None
+
+                    if wild_pool_override:
+                        name, lo, hi = random.choice(wild_pool_override)
+                        lv = random.randint(lo + badge_bonus, hi + badge_bonus)
+                        wild = Creature(name, lv, is_player=False)
+                    elif seasonal_extras and random.random() < 0.30:
+                        # 30% chance to pull from the seasonal bonus pool
+                        name, lo, hi = random.choice(seasonal_extras)
+                        lv = random.randint(lo + badge_bonus, hi + badge_bonus)
+                        wild = Creature(name, lv, is_player=False)
+                        slow_print(f"  {SEASON_COLORS.get(self.season, C.GREEN)}"
+                                   f"✦ A {self.season} visitor!{C.RESET}")
+                    else:
+                        wild = random_wild(area_name, badge_bonus=badge_bonus)
+
+
+                    if wild:
+                        slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
+                                   f"{C.YELLOW} appeared! (Lv.{wild.level}){C.RESET}")
                         press_enter()
-                    elif result == "lose":
-                        slow_print(f"  {C.RED}Your creatures fainted! Retreating...{C.RESET}")
-                        press_enter(); break
+                        player_c = self._pick_lead(player_c)
+                        if player_c is None: break
+
+                        result, obj = run_battle(player_c, wild, self.inventory,
+                                                 self.team, wild=True, weather=weather)
+                        if result == "win":
+                            self.seen.add(wild.name)
+                            self._count_battle()
+                            self.award_exp(player_c, wild)
+                            self.earn_money(max(wild.level * 15, 100))
+                            alive_after = [c for c in self.team if c.is_alive()]
+                            if alive_after and not player_c.is_alive():
+                                player_c = alive_after[0]
+                            clear()
+                        elif result == "caught":
+                            self._count_battle()
+                            captured = obj
+                            self.seen.add(captured.name)
+                            self.caught.add(captured.name)
+                            # If the captured wild was holding an item, give it to the player
+                            if captured.held_item:
+                                stolen = captured.held_item
+                                self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
+                                captured.held_item = None
+                                slow_print(f"  {C.YELLOW}★  {captured.name} was holding {stolen}! You got it!{C.RESET}")
+                            if len(self.team) < 6:
+                                self.team.append(captured)
+                                slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
+                                self._check_achievement("first_catch")
+                                self._check_pokedex_completion()
+                                if len(self.team) == 6:
+                                    self._check_achievement("team_full")
+                                # Offer nickname
+                                slow_print(f"  {C.GRAY}Give {captured.name} a nickname? (blank to skip):{C.RESET}")
+                                _nick = input("  > ").strip()[:10]
+                                if _nick:
+                                    captured.nickname = _nick
+                                    slow_print(f"  {C.GREEN}Nicknamed {C.BOLD}{_nick}{C.RESET}{C.GREEN}!{C.RESET}")
+                            else:
+                                slow_print(f"  {C.YELLOW}Team full (max 6)! "
+                                           f"{captured.name} was released.{C.RESET}")
+                            press_enter()
+                        elif result == "lose":
+                            slow_print(f"  {C.RED}Your creatures fainted! Retreating...{C.RESET}")
+                            press_enter(); break
 
 
             else:
@@ -2184,6 +2214,7 @@ def main():
         g.avatar      = saved.get("avatar", "♂")
         g.visited_towns = set(saved.get("visited_towns", []))
         g.nuzlocke    = saved.get("nuzlocke", False)
+        g.repel_steps = saved.get("repel_steps", 0)
         # Load rival state
         from engine.rival import RivalState
         rival_data = saved.get("rival")
