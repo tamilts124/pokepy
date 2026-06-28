@@ -80,10 +80,14 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     or the post-Elite-Four rival cutscene (first-clear only).
   - Verified via `py_compile`, an isolated scaling-logic check, and a Game-instantiation smoke test.
 
-- [ ] **Pokédex entry detail view** — status: todo
-  - From the Pokédex list, select a caught/seen creature to view its full dex entry (types, base stats,
-    abilities, evolution line). Currently the list only shows name + type.
-  - notes: natural follow-up now that the Pokédex list itself is wired in and working.
+- [x] **Pokédex entry detail view** — status: done
+  - The Pokédex list entries are now selectable menu options (instead of plain `print()` lines).
+    Selecting a seen-or-caught creature opens `_show_pokedex_entry()`: shows types and description
+    always; if caught, also shows a full base-stat bar chart, ability, and evolution target/level
+    (or "(final form)"); if only seen, shows a teaser prompting the player to catch one. Unseen
+    ("???") entries are still listed but selecting one is a no-op (nothing to reveal yet).
+  - Verified via `py_compile` and a direct call to `_show_pokedex_entry()` for both the
+    caught and seen-only states (confirmed correct branch content for each).
 
 - [ ] **Rival rematch / extended post-game** — status: todo
   - Now that Elite Four rematches exist, consider letting the rival also offer rematches at scaled

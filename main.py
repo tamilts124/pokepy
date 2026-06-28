@@ -126,18 +126,6 @@ class Game:
         from data.creatures import CREATURES as CDEX
         all_names = sorted(CDEX.keys())
         total     = len(all_names)
-        seen_cnt  = len(self.seen)
-        caught_cnt = len(self.caught)
-
-        clear()
-        section("📖  POKÉDEX")
-        print(f"  Seen: {C.CYAN}{seen_cnt}/{total}{C.RESET}   "
-              f"Caught: {C.GREEN}{caught_cnt}/{total}{C.RESET}\n")
-
-        # Completion bar
-        pct = int((caught_cnt / total) * 20) if total else 0
-        bar = "█" * pct + "░" * (20 - pct)
-        print(f"  Progress  {C.GREEN}[{bar}]{C.RESET} {int(caught_cnt/total*100) if total else 0}%\n")
 
         # Paged listing (20 per page)
         PAGE = 20
@@ -145,39 +133,92 @@ class Game:
         max_page = (total - 1) // PAGE
 
         while True:
+            seen_cnt   = len(self.seen)
+            caught_cnt = len(self.caught)
             clear()
             section("📖  POKÉDEX")
             print(f"  Seen {C.CYAN}{seen_cnt}/{total}{C.RESET}  │  "
                   f"Caught {C.GREEN}{caught_cnt}/{total}{C.RESET}  │  "
                   f"Page {page+1}/{max_page+1}\n")
 
+            pct = int((caught_cnt / total) * 20) if total else 0
+            bar = "█" * pct + "░" * (20 - pct)
+            print(f"  Progress  {C.GREEN}[{bar}]{C.RESET} {int(caught_cnt/total*100) if total else 0}%\n")
+
             start = page * PAGE
             chunk = all_names[start:start + PAGE]
 
+            entry_opts = []
             for name in chunk:
                 if name in self.caught:
                     data = CDEX[name]
                     types_str = "/".join(t.upper() for t in data["type"])
-                    print(f"  {C.GREEN}●{C.RESET} {C.BOLD}{name:<14}{C.RESET}  "
-                          f"{C.GRAY}[{types_str}]{C.RESET}")
+                    entry_opts.append(f"{C.GREEN}●{C.RESET} {C.BOLD}{name:<14}{C.RESET}  "
+                                       f"{C.GRAY}[{types_str}]{C.RESET}")
                 elif name in self.seen:
-                    print(f"  {C.YELLOW}◐{C.RESET} {name:<14}  {C.GRAY}(seen){C.RESET}")
+                    entry_opts.append(f"{C.YELLOW}◐{C.RESET} {name:<14}  {C.GRAY}(seen){C.RESET}")
                 else:
-                    print(f"  {C.GRAY}○ {'???':<14}  ???{C.RESET}")
+                    entry_opts.append(f"{C.GRAY}○ {'???':<14}  ???{C.RESET}")
 
-            print()
             nav = []
             if page > 0:         nav.append("◀  Prev page")
             if page < max_page:  nav.append("▶  Next page")
             nav.append("← Back")
-            choice = menu("", nav)
-            label  = nav[choice]
+
+            choice = menu("", entry_opts + nav)
+            if choice < len(entry_opts):
+                selected = chunk[choice]
+                if selected in self.seen or selected in self.caught:
+                    self._show_pokedex_entry(selected)
+                # Unseen entries (???) just do nothing — nothing to show yet.
+                continue
+            label = nav[choice - len(entry_opts)]
             if label == "◀  Prev page":
                 page -= 1
             elif label == "▶  Next page":
                 page += 1
             else:
                 return
+
+    def _show_pokedex_entry(self, name):
+        """Detail view for a single Pokédex entry — types, base stats, ability, evolution line."""
+        from data.creatures import CREATURES as CDEX
+        data = CDEX[name]
+        caught = name in self.caught
+
+        clear()
+        section(f"📖  #{name}")
+        types_str = "/".join(t.upper() for t in data["type"])
+        slow_print(f"  {C.BOLD}{name}{C.RESET}  {C.GRAY}[{types_str}]{C.RESET}")
+        if caught:
+            slow_print(f"  {C.GREEN}● Caught{C.RESET}")
+        else:
+            slow_print(f"  {C.YELLOW}◐ Seen, not yet caught{C.RESET}")
+        slow_print(f"  {C.GRAY}{data.get('desc', '')}{C.RESET}\n")
+
+        if caught:
+            # Full info once the player actually owns one.
+            bs = data["base_stats"]
+            stat_names = ["HP", "Attack", "Defense", "Sp. Atk", "Sp. Def", "Speed"]
+            print(f"  {C.CYAN}Base Stats{C.RESET}")
+            for sname, val in zip(stat_names, bs):
+                filled = int((val / 150) * 20)
+                bar = "▪" * max(0, min(20, filled)) + "·" * (20 - max(0, min(20, filled)))
+                print(f"  {sname:<8} {val:>4}  {C.GREEN}{bar}{C.RESET}")
+            print()
+            slow_print(f"  {C.CYAN}Ability:{C.RESET} {data.get('ability', 'None')}")
+
+            evo = data.get("evolution")
+            if evo:
+                evo_lv, evo_name = next(iter(evo.items()))
+                slow_print(f"  {C.CYAN}Evolves:{C.RESET} → {evo_name} at Lv.{evo_lv}")
+            else:
+                slow_print(f"  {C.CYAN}Evolves:{C.RESET} (final form)")
+        else:
+            slow_print(f"  {C.GRAY}Catch one to reveal base stats, ability, and evolution data.{C.RESET}")
+
+        print()
+        press_enter()
 
     # ── EXP & level-up handler (shared helper) ──────────
     def _handle_exp_events(self, creature, events):
