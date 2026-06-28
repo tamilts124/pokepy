@@ -974,3 +974,49 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
   - Old saves without the key default to "Normal" via `setdefault` in `load_game()`.
   - Verified: 6-test suite (`_test_difficulty.py`) + full 5-suite regression all pass.
     `py_compile` / `ast.parse` clean on all 6 core files.
+
+## New tasks — todo (Session 13)
+
+- [x] **Gym/Elite Four difficulty scaling** — status: done
+  - Added `_diff_gym_level(base_lv)` helper on `Game`: Easy 0.85×, Normal 1.0×, Hard 1.15×,
+    minimum level 1. Applied at two sites: gym creature level (pre-Creature creation) and
+    Elite Four non-rematch team_list comprehension. Gym prize money also scaled via the
+    existing `_diff_prize_money` helper. E4 rematch path (lv70+ override) intentionally
+    left alone — it is opt-in post-game content that should always be a challenge.
+  - Verified: 7-test `_test_gym_difficulty.py` suite all pass; all 6 files compile clean.
+
+- [ ] **Status condition explore reminder** — status: todo
+  - notes: When a creature has Poison or Burn active and the player is exploring (walking
+    between encounters), there's no indication the creature is slowly taking damage from
+    turns passing. Add a brief "⚠ [Name] is Poisoned! [HP bar]" warning line at the top
+    of the explore screen (alongside the Repel counter), shown whenever any team member
+    has a status that deals passive damage (Poison, Burn, Confusion). This is purely a
+    UI reminder — no new damage mechanic, status already ticks in battle.
+
+- [ ] **Sell confirmation for rare/expensive items** — status: todo
+  - notes: The shop's sell UI lets the player sell any item for 50% of its buy price with
+    no confirmation step. A player can accidentally sell a Master Ball or Max Revive with
+    a single keystroke. Add a confirmation prompt ("Sell [item] for ₽N? [Yes/No]") when
+    selling items worth ≥₽1000 (i.e. sell price ≥₽500). Cheap consumables (Potions,
+    Antidotes, Balls) need no confirmation — the friction should only appear where the
+    loss is significant and hard to undo.
+
+- [ ] **Battle: enemy AI uses status moves** — status: todo
+  - notes: Enemy AI always picks the highest-power move. Creatures with status moves
+    (Growl, Smokescreen, Sleep Powder, Toxic, etc.) never use them, making late-game
+    fights predictable. Add a simple AI heuristic: if the enemy has a status move and
+    hasn't used it yet this battle, 25% chance to use it on turns 1-3. Subsequent turns
+    always go back to highest-power selection. Use a per-battle flag `_status_move_used`
+    (reset on switch like `_bond_save_used`) to prevent spam. Only apply to gym leaders
+    and Elite Four enemies (not random wild creatures or route trainers), where tactical
+    depth matters most.
+
+- [ ] **Post-game area unlock: Champion's Grotto** — status: todo
+  - notes: After beating the Elite Four and becoming Champion, nothing new opens up in
+    the world. Add "Champion's Grotto" as a special grotto available only when
+    `is_champion=True`, accessible from Champion Road's explore menu. It uses the existing
+    `explore_grotto()` flow but with a curated pool of high-level (lv50-65) rare creatures
+    not found elsewhere — include 2-3 creatures normally only available as shinies or from
+    very late game areas. Also give it 100% held-item drop rate (the rarest berries and
+    one-off chance at a Life Orb) to reward completion. Add to `GROTTOS` dict keyed on
+    "Champion Road" and gate display in the explore menu behind `self.is_champion`.

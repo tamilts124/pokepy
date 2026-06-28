@@ -302,6 +302,13 @@ class Game:
         scale = DIFF_MONEY.get(getattr(self, 'difficulty', 'Normal'), 1.0)
         return round(raw_prize * scale)
 
+    def _diff_gym_level(self, base_lv):
+        """Scale gym/Elite Four creature level by difficulty.
+        Easy 0.85x, Normal 1.0x, Hard 1.15x (min level 1)."""
+        DIFF_GYM = {"Easy": 0.85, "Normal": 1.0, "Hard": 1.15}
+        scale = DIFF_GYM.get(getattr(self, 'difficulty', 'Normal'), 1.0)
+        return max(1, round(base_lv * scale))
+
     # ── Achievement checker ────────────────────────────
     def _check_achievement(self, key):
         if key not in self.achievements and key in ACHIEVEMENTS:
@@ -1872,13 +1879,14 @@ class Game:
 
         prize_money = 0
         for cname, lv in gym_data["team"]:
+            lv = self._diff_gym_level(lv)
             enemy  = Creature(cname, lv, is_player=False)
             result, obj = run_battle(player_c, enemy, self.inventory,
                                      self.team, wild=False, trainer_name=leader)
             if result == "win":
                 self._count_battle()
                 self.award_exp(player_c, enemy)
-                prize_money += lv * 60
+                prize_money += self._diff_prize_money(lv * 60)
                 alive = [c for c in self.team if c.is_alive()]
                 if alive and not player_c.is_alive():
                     player_c = self._pick_lead(
@@ -2233,6 +2241,8 @@ class Game:
             team_list = challenger["team"]
             if rematch:
                 team_list = [(cname, max(70, lv + 20)) for cname, lv in team_list]
+            else:
+                team_list = [(cname, self._diff_gym_level(lv)) for cname, lv in team_list]
 
             for cname, lv in team_list:
                 enemy  = Creature(cname, lv, is_player=False)
