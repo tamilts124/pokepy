@@ -1081,11 +1081,18 @@ class Game:
                 found = random.choice(treasure_pool)
                 self.inventory[found] = self.inventory.get(found, 0) + 1
                 slow_print(f"\n  {C.YELLOW}✦  You found a hidden {found}!{C.RESET}")
-                # Berry chance
+                # Berry chance — seasonal berry has boosted odds
+                season_berry = SEASONAL_BERRY.get(self.season)
                 if random.random() < 0.3:
-                    berry = random.choice(["Lum Berry", "Sitrus Berry", "Oran Berry"])
+                    berry_pool = ["Lum Berry", "Sitrus Berry", "Oran Berry"]
+                    # Seasonal berry appears in the pool with double weight
+                    if season_berry:
+                        berry_pool.append(season_berry)
+                    berry = random.choice(berry_pool)
                     self.inventory[berry] = self.inventory.get(berry, 0) + 1
                     slow_print(f"  {C.GREEN}...and a {berry}!{C.RESET}")
+                    if season_berry and berry == season_berry:
+                        slow_print(f"  {C.CYAN}(A seasonal {season_berry} — rare this {self.season}!){C.RESET}")
                 press_enter(); continue
 
             # ── Trainer (18%) ──
@@ -1137,6 +1144,9 @@ class Game:
 
             # ── Wild (50%) ──
             elif roll < 0.76:
+                # Build pool: base wild pool + any seasonal additions
+                seasonal_extras = SEASONAL_WILDS.get(self.season, {}).get(area_name, [])
+
                 # At night, ghost-types have higher weight
                 if night_bonus_areas() and random.random() < 0.35:
                     ghost_pool = [("Ghostlet", 5, 30), ("Spectrex", 20, 45)]
@@ -1150,8 +1160,16 @@ class Game:
                     name, lo, hi = random.choice(wild_pool_override)
                     lv = random.randint(lo, hi)
                     wild = Creature(name, lv, is_player=False)
+                elif seasonal_extras and random.random() < 0.30:
+                    # 30% chance to pull from the seasonal bonus pool
+                    name, lo, hi = random.choice(seasonal_extras)
+                    lv = random.randint(lo, hi)
+                    wild = Creature(name, lv, is_player=False)
+                    slow_print(f"  {SEASON_COLORS.get(self.season, C.GREEN)}"
+                               f"✦ A {self.season} visitor!{C.RESET}")
                 else:
                     wild = random_wild(area_name)
+
 
                 if wild:
                     slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
