@@ -985,13 +985,26 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     left alone — it is opt-in post-game content that should always be a challenge.
   - Verified: 7-test `_test_gym_difficulty.py` suite all pass; all 6 files compile clean.
 
-- [ ] **Status condition explore reminder** — status: todo
-  - notes: When a creature has Poison or Burn active and the player is exploring (walking
-    between encounters), there's no indication the creature is slowly taking damage from
-    turns passing. Add a brief "⚠ [Name] is Poisoned! [HP bar]" warning line at the top
-    of the explore screen (alongside the Repel counter), shown whenever any team member
-    has a status that deals passive damage (Poison, Burn, Confusion). This is purely a
-    UI reminder — no new damage mechanic, status already ticks in battle.
+- [x] **Status condition explore reminder** — status: done
+  - Found this in-progress on session start: `task.md` was already flipped to `in-progress`
+    but `git status`/`git diff` showed main.py untouched — only two throwaway scratch
+    scripts (`_debug_patch.py`, `_patch_status_warn.py`) existed, written to locate the
+    insertion point but never actually executed. Picked up the task fresh from the real
+    code rather than trusting the in-progress note.
+  - Added a `_STATUS_WARN` dict (poison/burn/confuse → color, icon, label) in `explore()`'s
+    while-loop header in `main.py`, printed right after the existing Repel-active line.
+    Iterates `self.team`, skips fainted members, and for any alive member whose `.status`
+    is poison/burn/confuse prints `  {icon}  {Name} is {Label}!  {hp_bar}` using the same
+    `getattr(c, 'nickname', None) or c.name` convention used everywhere else in main.py.
+    Paralysis/sleep/freeze intentionally excluded — they don't deal passive HP loss, per
+    the task note.
+  - This is a pure UI reminder, no new damage mechanic — status already ticks in battle.
+  - Verified: `py_compile` clean; wrote an 8-assertion throwaway test (poisoned/burned/
+    confused each trigger a correctly-labeled line, healthy and fainted teammates produce
+    no line, paralysis/sleep/freeze produce no line, multiple afflicted teammates each get
+    their own line in team order, nickname is used over species name when set) — all
+    passed, then deleted the test file. Re-ran the full 17-script regression suite — all
+    still pass. Removed the two leftover scratch patch scripts from the previous session.
 
 - [ ] **Sell confirmation for rare/expensive items** — status: todo
   - notes: The shop's sell UI lets the player sell any item for 50% of its buy price with

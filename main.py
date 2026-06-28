@@ -1947,7 +1947,19 @@ class Game:
             if self.repel_steps > 0:
                 print(f"  {C.CYAN}🛡  Repel active: {self.repel_steps} "
                       f"encounter{'s' if self.repel_steps != 1 else ''} left{C.RESET}")
+            _STATUS_WARN = {
+                "poison":  (C.MAGENTA, "☠", "Poisoned"),
+                "burn":    (C.RED,     "🔥", "Burned"),
+                "confuse": (C.YELLOW,  "💫", "Confused"),
+            }
+            for _sc in self.team:
+                if _sc.is_alive() and _sc.status in _STATUS_WARN:
+                    _col, _ico, _lbl = _STATUS_WARN[_sc.status]
+                    _dn = getattr(_sc, 'nickname', None) or _sc.name
+                    print(f"  {_col}{_ico}  {_dn} is {_lbl}!  "
+                          f"{hp_bar(_sc.hp, _sc.max_hp, 8)}{C.RESET}")
             opts = ["Walk further", "🏕  Rest (heal 20% HP)", "← Return to town"]
+
             if self.inventory.get("Escape Rope", 0) > 0:
                 opts.insert(2, "🪢  Use Escape Rope (leave instantly)")
             choice = menu("", opts)
