@@ -113,6 +113,99 @@ TOWN_REVISIT_QUOTES = {
                       "The air here hums with history. Yours included."),
 }
 
+# ── NPC dialogue pools ───────────────────────────────────
+# Each town gets a small pool of flavor lines. Some entries are tuples of
+# (condition_fn, text) where condition_fn(game) -> bool gates that line in;
+# plain strings are always available. At least one line per town has no
+# condition, so there's always something to say.
+NPC_DIALOGUE = {
+    "Rootvale": [
+        "Folks say every trainer's journey starts right here in Rootvale.",
+        "My kid wants a starter creature so badly. Maybe next year.",
+        (lambda g: len(g.badges) >= 1,
+         "Heard you got your first badge already! This town's proud of you."),
+        "The grass out west still hides a few surprises if you look close.",
+    ],
+    "Mudfen": [
+        "Mind the mud — it'll swallow a boot whole if you're not careful.",
+        "Best swamp-type creatures in the region come from right here.",
+        "The smell? You get used to it. Eventually.",
+        (lambda g: len(g.badges) >= 2,
+         "Two badges already? You're moving faster than most trainers."),
+    ],
+    "Greenpath": [
+        "Fern's been gym leader here longer than I've lived in town.",
+        "The leaves whisper if you listen close enough. Or so the kids say.",
+        (lambda g: "Leaf Badge" in g.badges,
+         "You beat Fern? Respect. That Leaf Badge isn't easy to earn."),
+        "Watch out for wild Leafling near the eastern treeline.",
+    ],
+    "Stonepeak": [
+        "The mountain's been cracking rocks since before this town existed.",
+        "Granite trains his creatures by having them push boulders. No joke.",
+        (lambda g: "Rock Badge" in g.badges,
+         "A Rock Badge holder, huh? The mountain remembers strong trainers."),
+        "Careful on the cliffs — more than one trainer's taken a tumble.",
+    ],
+    "Ashveil": [
+        "Ash falls year-round here. We just call it weather.",
+        "Cinder's gym is hotter than it looks. Bring water-types if you're smart.",
+        (lambda g: "Ember Badge" in g.badges,
+         "Survived Cinder's fire, did you? That Ember Badge means something."),
+        "The volcano's been quiet for years. Long may it stay that way.",
+    ],
+    "Frostholm": [
+        "Cold enough to freeze your thoughts, some mornings.",
+        "Blizara doesn't smile much, but she respects a trainer who doesn't flinch.",
+        (lambda g: "Frost Badge" in g.badges,
+         "You melted Blizara's icy resolve and walked off with the Frost Badge. Nice."),
+        "Ice-types love it here. Everyone else just shivers.",
+    ],
+    "Mistveil": [
+        "The mist clears at dawn, but it always finds its way back by dusk.",
+        "Myra says the fog shows you things you're not ready to see.",
+        (lambda g: "Mystic Badge" in g.badges,
+         "Myra rarely loses. The Mystic Badge on you proves you're no ordinary trainer."),
+        "Some say the mist here remembers every trainer who's passed through.",
+    ],
+    "Shadowmere": [
+        "Don't walk alone here after dark. Some say the shadows walk too.",
+        "Umbra's never been beaten in a real gym match. Until apparently now.",
+        (lambda g: "Shadow Badge" in g.badges,
+         "You beat Umbra? Most trainers won't even challenge that gym."),
+        "Ghost-types are bolder at night around here. Keep your eyes open.",
+    ],
+    "Dragonspire": [
+        "That skeleton in the sky isn't decoration — it's a warning.",
+        "Draven says only trainers who've earned six badges deserve his time.",
+        (lambda g: "Dragon Badge" in g.badges,
+         "A Dragon Badge holder walking among us. The spire bows to no one, but I do."),
+        "Dragons here are old, proud, and not impressed easily. You'll see.",
+    ],
+    "Champion Road": [
+        "This road's seen every champion the region's ever had.",
+        "The Elite Four don't go easy on anyone. Hope you're ready.",
+        (lambda g: getattr(g, 'is_champion', False),
+         "The Champion, walking this road again? It's an honor, truly."),
+        "Some trainers turn back here. The smart ones train a little more first.",
+    ],
+}
+
+
+def get_town_dialogue(game, town_name):
+    """Return the list of dialogue lines currently available for a town,
+    resolving any (condition_fn, text) entries against the live game state."""
+    lines = []
+    for entry in NPC_DIALOGUE.get(town_name, []):
+        if isinstance(entry, tuple):
+            cond, text = entry
+            if cond(game):
+                lines.append(text)
+        else:
+            lines.append(entry)
+    return lines
+
+
 # ── Day/Night cycle ──────────────────────────────────────
 def time_of_day():
     h = time.localtime().tm_hour
@@ -2097,6 +2190,8 @@ class Game:
                 opts.append(f"⚡  Rival Rematch ({self.rival.name})")
             if self.town in MOVE_TUTORS:
                 opts.append("🎓  Move Tutor")
+            if NPC_DIALOGUE.get(self.town):
+                opts.append("💬  Talk to locals")
 
             opts += [f"🗺  Travel to {c}" for c in town_data["connections"]]
             opts += [
@@ -2137,6 +2232,16 @@ class Game:
                 run_rival_rematch(self)
             elif label == "Move Tutor":
                 self.visit_move_tutor(self.town)
+            elif label == "Talk to locals":
+                lines = get_town_dialogue(self, self.town)
+                clear()
+                section(f"💬  TALK TO LOCALS  —  {self.town}")
+                if lines:
+                    line = random.choice(lines)
+                    slow_print(f"  {C.CYAN}\"{line}\"{C.RESET}", 0.02)
+                else:
+                    slow_print(f"  {C.GRAY}Nobody seems to want to chat right now.{C.RESET}")
+                press_enter()
             elif label.startswith("Travel to"):
                 dest = label.replace("Travel to ", "")
                 slow_print(f"  {C.CYAN}You travel to {dest}...{C.RESET}", 0.02)

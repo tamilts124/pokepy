@@ -344,11 +344,22 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     is independently unit-tested) is considered sufficient; flagging this as a good first
     candidate for a real interactive playtest pass next session.
 
-- [ ] **Town: NPC dialogue system** — status: todo
-  - Towns have no ambient NPCs — visiting any town is purely mechanical (shop/inn/gym).
-    Add a small pool of 2–4 dialogue lines per town (residents, gossip, hints), surfaced via
-    a "💬 Talk to locals" option in the town menu. Dialogue can be static strings initially,
-    with one or two lines that react to badge count or champion status for progression feel.
+- [x] **Town: NPC dialogue system** — status: done
+  - Added `NPC_DIALOGUE` dict: 3-4 flavor lines per town (all 10 towns covered), residents'
+    gossip/hints/local color. Entries can be plain strings (always available) or
+    `(condition_fn, text)` tuples gated on live game state — used here for "you just earned
+    that town's gym badge" reaction lines and a Champion-only line on Champion Road.
+  - `get_town_dialogue(game, town_name)` resolves the pool against current state and returns
+    only the lines currently unlocked.
+  - "💬 Talk to locals" option added to the town menu (only shown for towns with a pool —
+    currently all of them) — picks one random available line and displays it.
+  - Verified: `py_compile` clean. A scripted test called `get_town_dialogue()` directly across
+    badge-count permutations and confirmed: conditional lines are correctly excluded/included
+    (e.g. Greenpath without "Leaf Badge" → 3 lines, with it → 4; Champion Road only unlocks its
+    4th line once `is_champion` is set), and that every town in `TOWNS` has a non-empty
+    dialogue pool (no town silently lacks the option). Also unit-tested the menu label-parsing
+    split against the new emoji option string to confirm it resolves to exactly "Talk to
+    locals" so the `elif label == "Talk to locals":` branch is actually reachable.
 
 - [ ] **Explore: hidden grottos discoverable through exploration** — status: todo
   - Currently grottos are a fixed menu option in towns that have one. Make them also
