@@ -1006,13 +1006,28 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     passed, then deleted the test file. Re-ran the full 17-script regression suite — all
     still pass. Removed the two leftover scratch patch scripts from the previous session.
 
-- [ ] **Sell confirmation for rare/expensive items** — status: todo
-  - notes: The shop's sell UI lets the player sell any item for 50% of its buy price with
-    no confirmation step. A player can accidentally sell a Master Ball or Max Revive with
-    a single keystroke. Add a confirmation prompt ("Sell [item] for ₽N? [Yes/No]") when
-    selling items worth ≥₽1000 (i.e. sell price ≥₽500). Cheap consumables (Potions,
-    Antidotes, Balls) need no confirmation — the friction should only appear where the
-    loss is significant and hard to undo.
+- [x] **Sell confirmation for rare/expensive items** — status: done
+  - Added a `confirm()` gate in the shop's SELL flow in `main.py`: right after `sell_price`
+    is computed, if `ITEMS[item]["price"] >= 1000` (i.e. sell price ≥ ₽500) the player is
+    shown `Sell {qty}x {item} for ₽{sell_price}?` and declining `continue`s back to the
+    sell menu without mutating `self.inventory`/`self.money`. Cheap consumables (price
+    under ₽1000 buy / ₽500 sell — Potions, Antidotes, all 4 capture balls below Master Ball)
+    sell instantly with no extra step, exactly as before.
+  - Reused the existing `confirm()` helper from `ui/display.py` (already imported in
+    `main.py`) rather than rolling a new prompt, matching the same y/n pattern used for
+    evolution and quit-without-saving confirmations elsewhere in the file.
+  - Hit a self-inflicted bug while editing: an initial line-range replace clipped the
+    `if choice == len(sellable):` / `break` pair (leaving a syntax error) and left a
+    duplicate stray `press_enter()`. Caught it immediately via `py_compile` before testing
+    further, re-read the exact current lines, and rewrote the whole SELL block cleanly in
+    one line-ranged write — verified by re-reading the result before moving on.
+  - Verified: `py_compile` clean; 7-assertion throwaway test confirmed the ≥₽1000 threshold
+    constant, that the `confirm()` prompt includes item/qty/price, that declining `continue`s
+    before any inventory/money mutation, that the mutation lines only run after the gate,
+    that the "← Back" `break` path is intact, boundary logic (999 vs 1000), and the correct
+    total `press_enter()` count in the block (empty-inventory / cancel / success paths).
+    Manually confirmed Master Ball (₽9999, sell ₽4999) crosses the threshold. Re-ran the
+    full 17-script regression suite — all still pass.
 
 - [ ] **Battle: enemy AI uses status moves** — status: todo
   - notes: Enemy AI always picks the highest-power move. Creatures with status moves

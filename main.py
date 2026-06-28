@@ -1596,11 +1596,17 @@ class Game:
                     if qty == 0:
                         continue
                     sell_price = (ITEMS[item]["price"] // 2) * qty
+                    if ITEMS[item]["price"] >= 1000:
+                        if not confirm(f"\n  Sell {qty}x {item} for {C.YELLOW}₽{sell_price}{C.RESET}?"):
+                            slow_print("  Cancelled.")
+                            press_enter()
+                            continue
                     self.inventory[item] -= qty
                     self.money += sell_price
                     slow_print(f"  {C.GREEN}Sold {qty}x {item} for {C.YELLOW}₽{sell_price}{C.RESET}  "
                                f"| Balance: {C.YELLOW}₽{self.money}{C.RESET}")
                     press_enter()
+
 
             # ── Leave ──
             else:
