@@ -286,7 +286,21 @@ class Game:
 
         self.visited_towns = set()       # towns the player has entered at least once
         self.nuzlocke    = False         # if True, fainted creatures are permanently deleted
+        self.difficulty  = "Normal"      # "Easy", "Normal", or "Hard"
 
+
+
+    def _diff_badge_bonus(self, raw_bonus):
+        """Scale badge_bonus by difficulty: Easy 0.6x, Normal 1.0x, Hard 1.4x."""
+        DIFF_SCALE = {"Easy": 0.6, "Normal": 1.0, "Hard": 1.4}
+        scale = DIFF_SCALE.get(getattr(self, 'difficulty', 'Normal'), 1.0)
+        return round(raw_bonus * scale)
+
+    def _diff_prize_money(self, raw_prize):
+        """Scale prize money by difficulty: Easy 1.25x, Normal 1.0x, Hard 0.75x."""
+        DIFF_MONEY = {"Easy": 1.25, "Normal": 1.0, "Hard": 0.75}
+        scale = DIFF_MONEY.get(getattr(self, 'difficulty', 'Normal'), 1.0)
+        return round(raw_prize * scale)
 
     # ── Achievement checker ────────────────────────────
     def _check_achievement(self, key):
@@ -669,7 +683,8 @@ class Game:
                   repel_steps=getattr(self, 'repel_steps', 0),
                   defeated_trainers=getattr(self, '_defeated_trainers', set()),
                   item_drought=getattr(self, 'item_drought', 0),
-                  last_played_date=today)
+                  last_played_date=today,
+                  difficulty=getattr(self, 'difficulty', 'Normal'))
 
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
@@ -1435,6 +1450,9 @@ class Game:
             slow_print(f"  Title   : {C.YELLOW}★  Champion  ★{C.RESET}")
         if getattr(self, 'nuzlocke', False):
             slow_print(f"  Mode    : {C.RED}⚠  NUZLOCKE — creatures die forever{C.RESET}")
+        _diff = getattr(self, 'difficulty', 'Normal')
+        _diff_color = {"Easy": C.GREEN, "Normal": C.RESET, "Hard": C.RED}.get(_diff, C.RESET)
+        slow_print(f"  Diffclt : {_diff_color}{_diff}{C.RESET}")
         slow_print(f"  Money   : {C.YELLOW}₽{self.money}{C.RESET}")
         slow_print(f"  Badges  : {len(self.badges)}/{len(REQUIRED_BADGES)}")
         slow_print(f"  Battles : {self.steps}")
@@ -1978,7 +1996,7 @@ class Game:
             # ── Trainer (18%) ──
             elif roll < 0.26 and trainer_pool:
                 # Badge-scaled levels: +5 per 2 badges earned
-                badge_bonus = (len(self.badges) // 2) * 5
+                badge_bonus = self._diff_badge_bonus((len(self.badges) // 2) * 5)
                 # Build a trainer team of 1-3 creatures
                 team_size = random.choices([1, 2, 3], weights=[40, 40, 20])[0]
                 trainer_team = [random.choice(trainer_pool) for _ in range(team_size)]
@@ -2013,7 +2031,7 @@ class Game:
                         self._count_battle()
                         self.award_exp(player_c, enemy)
 
-                        prize_money += (lv + badge_bonus) * 40
+                        prize_money += self._diff_prize_money((lv + badge_bonus) * 40)
                         alive_after = [c for c in self.team if c.is_alive()]
                         if alive_after and not player_c.is_alive():
                             player_c = self._pick_lead(
@@ -2051,7 +2069,7 @@ class Game:
                     press_enter()
                 else:
                     # Badge-scaled levels: +5 per 2 badges earned
-                    badge_bonus = (len(self.badges) // 2) * 5
+                    badge_bonus = self._diff_badge_bonus((len(self.badges) // 2) * 5)
                     # Build pool: base wild pool + any seasonal additions
                     seasonal_extras = SEASONAL_WILDS.get(self.season, {}).get(area_name, [])
 
@@ -2307,7 +2325,7 @@ class Game:
         player_c = self._pick_lead()
         if player_c is None: return
 
-        badge_bonus = (len(self.badges) // 2) * 5
+        badge_bonus = self._diff_badge_bonus((len(self.badges) // 2) * 5)
         fish_count = 0
         while True:
             # Bobber animation
@@ -2426,7 +2444,7 @@ class Game:
         creature_pool = grotto["creatures"]
         max_encounters = random.randint(2, 4)
         encounters_done = 0
-        badge_bonus = (len(self.badges) // 2) * 5
+        badge_bonus = self._diff_badge_bonus((len(self.badges) // 2) * 5)
 
         while encounters_done < max_encounters:
             clear()
@@ -2722,6 +2740,17 @@ def new_game(g):
     else:
         slow_print(f"  {C.GREEN}Normal mode. Fainted creatures can be revived.{C.RESET}")
 
+    # ── Difficulty ──
+    print()
+    slow_print(f"  {C.CYAN}━━━  DIFFICULTY  ━━━{C.RESET}")
+    slow_print(f"  {C.GREEN}Easy  :{C.RESET} Enemies are weaker, you earn more prize money.")
+    slow_print(f"  {C.YELLOW}Normal:{C.RESET} The standard experience.")
+    slow_print(f"  {C.RED}Hard  :{C.RESET} Enemies are stronger, you earn less prize money.")
+    diff_idx = menu("Choose difficulty:", ["Easy", "Normal", "Hard"])
+    g.difficulty = ["Easy", "Normal", "Hard"][diff_idx]
+    diff_colors = {"Easy": C.GREEN, "Normal": C.YELLOW, "Hard": C.RED}
+    slow_print(f"  {diff_colors[g.difficulty]}{g.difficulty} mode selected.{C.RESET}")
+
     # ── Rival name ──
     print()
     rival_name = input(f"  {C.YELLOW}Enter your rival's name (default: Gary):{C.RESET} ").strip()
@@ -2825,6 +2854,7 @@ def main():
         g.avatar      = saved.get("avatar", "♂")
         g.visited_towns = set(saved.get("visited_towns", []))
         g.nuzlocke    = saved.get("nuzlocke", False)
+        g.difficulty  = saved.get("difficulty", "Normal")
         g.repel_steps = saved.get("repel_steps", 0)
         g.item_drought = saved.get("item_drought", 0)
         g._defeated_trainers = set(saved.get("defeated_trainers", []))

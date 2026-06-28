@@ -449,7 +449,7 @@ def save_file_path(slot=1):
 
 SAVE_VERSION = 2
 
-def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, shiny_caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None, item_drought=0, last_played_date=None):
+def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, shiny_caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None, item_drought=0, last_played_date=None, difficulty="Normal"):
     data = {
         "version":     SAVE_VERSION,
         "player_name": player_name,
@@ -462,6 +462,7 @@ def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1
         "steps":       steps,
         "play_seconds": play_seconds,
         "nuzlocke":    bool(nuzlocke),
+        "difficulty":  difficulty or "Normal",
         "repel_steps": repel_steps,
         "item_drought": item_drought,
         "defeated_trainers": sorted(defeated_trainers or []),
@@ -502,6 +503,7 @@ def load_game(slot=1):
     data.setdefault("visited_towns", [])
     data.setdefault("play_seconds", 0)
     data.setdefault("nuzlocke", False)
+    data.setdefault("difficulty", "Normal")
     data.setdefault("repel_steps", 0)
     data.setdefault("item_drought", 0)
     data.setdefault("defeated_trainers", [])

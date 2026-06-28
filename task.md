@@ -957,7 +957,20 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     (partial restore capped at max PP, full restore via 999 amount). Full 5-script regression
     suite passes unchanged.
 
-- [ ] **Difficulty option at new-game (separate from Nuzlocke)** — status: todo
-  - notes: Nuzlocke is an all-or-nothing permadeath toggle. A softer Easy/Normal/Hard
-    difficulty pick (affecting wild/trainer level scaling multiplier and/or prize money)
-    would let players tune challenge without the permadeath stakes.
+- [x] **Difficulty option at new-game (separate from Nuzlocke)** — status: done
+  - Previous session had partially started this: `engine/core.py` save/load signature and
+    `Game.__init__` were done; `main.py` still needed 7 integration points.
+  - This session completed all remaining wiring:
+    - `_diff_badge_bonus(raw)` and `_diff_prize_money(raw)` helper methods on `Game`:
+      Easy scales badge_bonus 0.6× (enemies weaker) / Hard 1.4× (stronger); Easy scales
+      prize money 1.25× / Hard 0.75×. Normal is always 1.0× (identical to pre-difficulty).
+    - All 4 `badge_bonus = (len(self.badges) // 2) * 5` call sites in `main.py` (explore
+      trainer, explore wild, go_fishing, explore_grotto) wrapped with `_diff_badge_bonus`.
+    - `prize_money += (lv + badge_bonus) * 40` wrapped with `_diff_prize_money`.
+    - `Game.save()` passes `difficulty=` kwarg; load path restores `g.difficulty`.
+    - `new_game()` adds a clear 3-way difficulty prompt (after Nuzlocke, before rival name),
+      with color-coded descriptions (green Easy / yellow Normal / red Hard).
+    - Trainer Card `open_stats()` shows `Diffclt :` line with matching color.
+  - Old saves without the key default to "Normal" via `setdefault` in `load_game()`.
+  - Verified: 6-test suite (`_test_difficulty.py`) + full 5-suite regression all pass.
+    `py_compile` / `ast.parse` clean on all 6 core files.
