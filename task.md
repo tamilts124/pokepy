@@ -244,10 +244,37 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ## New tasks — todo
 
-- [ ] **Random trainer rematches while exploring** — status: todo
-  - `explore()`'s random trainer encounters (the 18% roll) currently have no rematch/cooldown
-    tracking at all — every walk can re-roll the same trainer archetype indefinitely, which is
-    fine for grinding but means there's no sense of "named" trainers to remember, unlike gym
-    leaders/rivals. Consider giving a handful of random trainers per area a fixed name + seed
-    so repeat encounters feel like rematches rather than anonymous reskins, or leave as-is if
-    that's judged not worth the complexity for a feature whose whole point is throwaway grinding.
+- [x] **Random trainer rematches while exploring** — status: done
+  - Found a related piece of dead scaffolding while picking this up: `Game._defeated_trainers`
+    was already declared in `__init__` (comment: "track rematched trainers by (area,
+    name_hash)") but never read or written anywhere — leftover groundwork from an earlier
+    session that never got finished. Built the actual feature on top of it:
+  - Added `RANDOM_TRAINER_NAMES`: each of the 6 existing trainer titles (Youngster, Lass,
+    Hiker, Sailor, Ranger, Ace Trainer) now pairs with 2 fixed first names, so a random
+    encounter resolves to a stable identity like "Hiker Earl" instead of a bare title.
+  - `explore()`'s trainer branch now builds a `trainer_key = f"{area_name}::{t_name}"` and
+    checks it against `self._defeated_trainers`. First encounter with that identity in that
+    area uses the normal "Let's battle!" intro; any later encounter with the *same* identity
+    in the *same* area shows a distinct rematch line ("You beat me before, but I've been
+    training!"). The key is recorded on every win (idempotent either way).
+  - Persisted `_defeated_trainers` through `save_game()`/`load_game()` in `engine/core.py`
+    (encoded as a sorted list of `"area::name"` strings, `setdefault([])` for old saves) and
+    wired it through `Game.save()` and the continue-slot load path in `main.py`, matching the
+    pattern used for `visited_towns`/`seen`/`caught`.
+  - Verified: `py_compile` clean on all touched files. A scripted harness pinned
+    `random.choice` to force the identity "Hiker Earl" in Rocky Tunnel, ran `explore()` twice
+    capturing `slow_print` output — confirmed the first encounter shows the normal intro and
+    records the key, and the second shows the rematch line. A second harness round-tripped
+    `save_game`/`load_game` with a 2-entry `defeated_trainers` set and confirmed it survives
+    intact. Scope note: identity is per (area, title+name) only — battle stats/mechanics are
+    unchanged (still badge-scaled like any other trainer), this is purely a flavor/memory layer.
+
+## New tasks — todo
+
+- [ ] **Held item pity timer for long catch droughts** — status: todo
+  - Wild creatures roll their held item independently per encounter via `held_item_pool`
+    (typically 5-20% chance). A player with bad luck can go many encounters in a row without
+    ever seeing a held item drop, which doesn't feel great. Consider a small "pity" counter
+    on `Game` that nudges the roll upward after N consecutive item-less wild encounters, reset
+    on any drop — purely a luck-smoothing QoL change, not a new mechanic. Needs a decision on
+    whether this is worth the added state vs. just leaving drop rates as pure-random.

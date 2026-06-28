@@ -395,7 +395,7 @@ def save_file_path(slot=1):
 
 SAVE_VERSION = 2
 
-def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0):
+def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None):
     data = {
         "version":     SAVE_VERSION,
         "player_name": player_name,
@@ -408,6 +408,7 @@ def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1
         "play_seconds": play_seconds,
         "nuzlocke":    bool(nuzlocke),
         "repel_steps": repel_steps,
+        "defeated_trainers": sorted(defeated_trainers or []),
         "rival":       rival.to_dict() if rival is not None else None,
         "achievements": achievements or [],
         "season":      season or "Spring",
@@ -442,6 +443,7 @@ def load_game(slot=1):
     data.setdefault("play_seconds", 0)
     data.setdefault("nuzlocke", False)
     data.setdefault("repel_steps", 0)
+    data.setdefault("defeated_trainers", [])
     data["team"] = [Creature.from_dict(d) for d in data["team"]]
     return data
 

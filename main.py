@@ -72,6 +72,20 @@ MOVE_TUTORS = {
     "Dragonspire": [("Dragon Rage", 2000), ("Earthquake", 2500), ("Swords Dance", 1500)],
 }
 
+# ── Random trainer identities ────────────────────────────
+# Each title pairs with a small fixed pool of first names, so a random encounter
+# resolves to a stable identity (e.g. "Hiker Earl") instead of an anonymous title.
+# Combined with Game._defeated_trainers, this lets repeat encounters with the same
+# named trainer in the same area read as a rematch rather than a fresh reskin.
+RANDOM_TRAINER_NAMES = {
+    "Youngster":   ["Joey", "Timmy"],
+    "Lass":        ["Mia", "Nora"],
+    "Hiker":       ["Earl", "Rocco"],
+    "Sailor":      ["Skip", "Mango"],
+    "Ranger":      ["Forrest", "Wren"],
+    "Ace Trainer": ["Vance", "Sable"],
+}
+
 # ── Town revisit flavor lines ────────────────────────────
 # Each town has two lines: one shown after beating its gym, one for non-gym revisits.
 # Format: (gym_beaten_quote, general_revisit_quote)
@@ -474,7 +488,8 @@ class Game:
                   visited_towns=getattr(self, 'visited_towns', set()),
                   play_seconds=self.play_seconds,
                   nuzlocke=getattr(self, 'nuzlocke', False),
-                  repel_steps=getattr(self, 'repel_steps', 0))
+                  repel_steps=getattr(self, 'repel_steps', 0),
+                  defeated_trainers=getattr(self, '_defeated_trainers', set()))
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
 
@@ -1488,12 +1503,20 @@ class Game:
                 team_size = random.choices([1, 2, 3], weights=[40, 40, 20])[0]
                 trainer_team = [random.choice(trainer_pool) for _ in range(team_size)]
                 cname, lv = trainer_team[0]
-                t_name = random.choice(["Youngster", "Lass", "Hiker",
-                                        "Sailor", "Ranger", "Ace Trainer"])
+                t_title = random.choice(list(RANDOM_TRAINER_NAMES))
+                t_first = random.choice(RANDOM_TRAINER_NAMES[t_title])
+                t_name  = f"{t_title} {t_first}"
+                trainer_key = f"{area_name}::{t_name}"
+                rematch = trainer_key in self._defeated_trainers
                 clear()
                 banner(f"  TRAINER BATTLE  ", C.YELLOW)
-                slow_print(f"\n  {C.BOLD}{t_name}{C.RESET} steps out from the tall grass!")
-                slow_print(f"  {C.YELLOW}{t_name}{C.RESET}: \"Hey! You there! Let's battle!\"")
+                if rematch:
+                    slow_print(f"\n  {C.BOLD}{t_name}{C.RESET} spots you again!")
+                    slow_print(f"  {C.YELLOW}{t_name}{C.RESET}: \"You beat me before, "
+                               f"but I've been training! Let's go again!\"")
+                else:
+                    slow_print(f"\n  {C.BOLD}{t_name}{C.RESET} steps out from the tall grass!")
+                    slow_print(f"  {C.YELLOW}{t_name}{C.RESET}: \"Hey! You there! Let's battle!\"")
                 team_preview = ", ".join(f"{n} Lv.{l + badge_bonus}" for n, l in trainer_team)
                 slow_print(f"  {C.GRAY}{t_name} has: {team_preview}{C.RESET}")
                 press_enter()
@@ -1526,6 +1549,7 @@ class Game:
                 else:
                     self.earn_money(prize_money)
                     slow_print(f"  {C.YELLOW}{t_name}: \"Good battle!\"  {C.RESET}")
+                    self._defeated_trainers.add(trainer_key)
                     press_enter()
                     clear()
 
@@ -2220,6 +2244,7 @@ def main():
         g.visited_towns = set(saved.get("visited_towns", []))
         g.nuzlocke    = saved.get("nuzlocke", False)
         g.repel_steps = saved.get("repel_steps", 0)
+        g._defeated_trainers = set(saved.get("defeated_trainers", []))
         # Load rival state
         from engine.rival import RivalState
         rival_data = saved.get("rival")
