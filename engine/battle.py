@@ -4,7 +4,9 @@ import time
 from engine.core import (calc_damage, try_capture, Creature, MOVES, ITEMS,
                           apply_weather_damage, weather_move_mult)
 from ui.display  import (C, slow_print, banner, hp_bar, creature_card,
-                          menu, press_enter, section, clear)
+                          menu, press_enter, section, clear,
+                          show_battle_log, reset_battle_log)
+
 
 # ─────────────────────────────────────────────
 #  HELPERS
@@ -985,7 +987,10 @@ def run_battle(player_c, enemy_c, inventory, team,
     press_enter()
 
     boosts  = {"atk": 1.0, "def": 1.0, "spatk": 1.0, "spdef": 1.0}
+    reset_battle_log()
+
     summary = BattleSummary()
+
     # Assign display tags so messages say "Your Flambit" vs "Wild Flambit" (or "Foe Flambit")
     player_c._battle_tag = "Your"
     enemy_c._battle_tag  = "Wild" if wild else "Foe"
@@ -1016,9 +1021,10 @@ def run_battle(player_c, enemy_c, inventory, team,
         clear()
         battle_ui(player_c, enemy_c, wild, weather, trainer_name=trainer_name)
 
-        options = ["⚔  Fight", "🎒  Bag", "🔄  Switch Creature", "📊  Stats"]
+        options = ["⚔  Fight", "🎒  Bag", "🔄  Switch Creature", "📊  Stats", "📜  Log"]
         if wild:
             options.append("🏃  Run")
+
         choice = menu("What will you do?", options)
 
         took_turn  = False
@@ -1198,8 +1204,14 @@ def run_battle(player_c, enemy_c, inventory, team,
             press_enter()
             continue
 
+        # ══ LOG ══
+        elif choice == 4:
+            show_battle_log()
+            continue
+
         # ══ RUN ══
-        elif choice == 4 and wild:
+        elif choice == 5 and wild:
+
             chance = run_chance(player_c, enemy_c)
             if random.random() < chance:
                 slow_print(f"  {C.CYAN}Got away safely!{C.RESET}")

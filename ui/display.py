@@ -1,6 +1,27 @@
 import os
 import time
 import sys
+from collections import deque
+
+# ─── BATTLE MESSAGE LOG ───
+# Rolling buffer of recent slow_print()'d lines, used by the in-battle
+# 📜 Log viewer so players can review what just happened.
+BATTLE_LOG = deque(maxlen=300)
+
+def reset_battle_log():
+    BATTLE_LOG.clear()
+
+def show_battle_log(n=15):
+    clear()
+    section("📜  BATTLE LOG")
+    recent = list(BATTLE_LOG)[-n:]
+    if not recent:
+        print(f"  {C.GRAY}(nothing has happened yet){C.RESET}")
+    else:
+        for line in recent:
+            print(f"  {line}")
+    print()
+    press_enter()
 
 # ─── ANSI COLORS ───
 class C:
@@ -39,6 +60,7 @@ def clear():
     os.system("cls" if os.name == "nt" else "clear")
 
 def slow_print(text, delay=0.025):
+    BATTLE_LOG.append(text)
     for ch in text:
         sys.stdout.write(ch)
         sys.stdout.flush()
