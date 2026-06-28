@@ -692,13 +692,12 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     starter abilities at/above threshold, one-shot suppression, flag reset on switch).
     Full 8-file regression suite passes. `py_compile` clean on both touched files.
 
-- [ ] **Status condition duration UI** — status: todo
-  - Sleep and Confusion have turn counters (`sleep_turns`, `confusion_turns`) but the player
-    has no way to see how many turns remain without guessing. Show remaining turns next to
-    the status badge on the creature card during battle, e.g. "💤 Sleep (2)" so the player
-    can plan around it.
-
-- [x] **Move power visual tier in fight menu** — status: done
+- [x] **Status condition duration UI** — status: done
+  - Sleep and Confusion have turn counters (`sleep_turns`, `confusion_turns`); now shown
+    in the creature card as `[SLP-2]` / `[CNF-3]` etc. Falls back to plain `[SLP]`/`[CNF]`
+    when turns=0 (wake-up edge). Poison/Burn/Paralysis/Freeze unaffected (no turn counter
+    to show). Implemented in `creature_card()` in `ui/display.py`. Verified via
+    `_test_status_duration.py` (7 assertions, all pass). Full regression suite still passes.
   - Added `_pwr_tier(pwr)` nested helper inside the fight-menu `else:` block in `run_battle()`
     — 4 tiers: `—` gray (status/power=0), `★` yellow (≤40), `★★` yellow (41–80), `★★★` red
     (81+). Padded to 4 chars width so all move lines stay column-aligned regardless of tier.

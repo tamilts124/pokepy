@@ -102,11 +102,13 @@ def creature_card(c, prefix="", show_exp=False):
     elif c.status == "burn":
         status_str = f" {C.RED}[BRN]{C.RESET}"
     elif c.status == "sleep":
-        status_str = f" {C.BLUE}[SLP]{C.RESET}"
+        _slp = getattr(c, 'sleep_turns', 0)
+        status_str = f" {C.BLUE}[SLP-{_slp}]{C.RESET}" if _slp > 0 else f" {C.BLUE}[SLP]{C.RESET}"
     elif c.status == "freeze":
         status_str = f" {C.CYAN}[FRZ]{C.RESET}"
     elif c.status == "confuse":
-        status_str = f" {C.MAGENTA}[CNF]{C.RESET}"
+        _cnf = getattr(c, 'confusion_turns', 0)
+        status_str = f" {C.MAGENTA}[CNF-{_cnf}]{C.RESET}" if _cnf > 0 else f" {C.MAGENTA}[CNF]{C.RESET}"
 
     # Held item tag
     held_str = ""
