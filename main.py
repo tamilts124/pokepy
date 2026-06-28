@@ -255,9 +255,11 @@ class Game:
         self.shiny_caught = set()        # creature names caught as shiny variants
         self.is_champion = False         # True once the Elite Four has been beaten at least once
         self.avatar      = "♂"          # trainer avatar symbol chosen at character creation
+        self.last_played_date = ""       # ISO date string of last save; used for daily login bonus
 
         self.visited_towns = set()       # towns the player has entered at least once
         self.nuzlocke    = False         # if True, fainted creatures are permanently deleted
+
 
     # ── Achievement checker ────────────────────────────
     def _check_achievement(self, key):
@@ -606,6 +608,8 @@ class Game:
         # Accumulate current session time, then reset session start
         self.play_seconds += int(time.time() - self._session_start)
         self._session_start = time.time()
+        import datetime
+        today = datetime.date.today().isoformat()
         save_game(self.player_name, self.town, self.team,
                   self.inventory, self.badges, self.money,
                   self.steps, slot=self.save_slot,
@@ -622,9 +626,12 @@ class Game:
                   nuzlocke=getattr(self, 'nuzlocke', False),
                   repel_steps=getattr(self, 'repel_steps', 0),
                   defeated_trainers=getattr(self, '_defeated_trainers', set()),
-                  item_drought=getattr(self, 'item_drought', 0))
+                  item_drought=getattr(self, 'item_drought', 0),
+                  last_played_date=today)
 
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
+
+
 
 
 
@@ -2484,6 +2491,7 @@ def main():
         g.repel_steps = saved.get("repel_steps", 0)
         g.item_drought = saved.get("item_drought", 0)
         g._defeated_trainers = set(saved.get("defeated_trainers", []))
+        g.last_played_date = saved.get("last_played_date", "")
 
         # Load rival state
         from engine.rival import RivalState
@@ -2491,6 +2499,29 @@ def main():
         if rival_data:
             g.rival = RivalState.from_dict(rival_data)
         slow_print(f"  {C.GREEN}Welcome back, {C.BOLD}{g.player_name}{C.RESET}{C.GREEN}!{C.RESET}")
+
+        # ── Daily login bonus ──────────────────────────────────────────────
+        import datetime
+        _today = datetime.date.today().isoformat()
+        if g.last_played_date and g.last_played_date != _today:
+            # New real-world day — gift a random useful consumable
+            import random as _rnd
+            _daily_pool = [
+                ("Potion",      3, "a trio of Potions"),
+                ("Super Potion", 2, "a couple of Super Potions"),
+                ("Antidote",    2, "a pair of Antidotes"),
+                ("Elixir",      1, "an Elixir"),
+                ("Great Ball",  2, "a couple of Great Balls"),
+                ("Revive",      1, "a Revive"),
+            ]
+            _item, _qty, _desc = _rnd.choice(_daily_pool)
+            g.inventory[_item] = g.inventory.get(_item, 0) + _qty
+            print()
+            banner("  🌅  DAILY BONUS  🌅  ", C.YELLOW)
+            slow_print(f"  {C.YELLOW}It's a new day! As a welcome-back gift,")
+            slow_print(f"  you found {_desc} in your bag!{C.RESET}")
+            slow_print(f"  {C.GRAY}(You can only receive this once per real-world day.){C.RESET}")
+        g.last_played_date = _today
         press_enter()
 
 

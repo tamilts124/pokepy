@@ -411,18 +411,44 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     path calls, 3 catch-site tracking calls, encounter messages, Pokédex display, and
     battle/display shiny markers all present and correct.
 
+## Session 7 — New features (2026-06)
+
+- [x] **Battle: turn-by-turn damage summary readability** — status: done
+  - Added a `_recap` dict (keys: `player_move`, `player_dmg`, `enemy_move`, `enemy_dmg`)
+    that is populated each turn — player move name + damage dealt at the `player_attack` call
+    site, enemy damage at both `enemy_move` call sites.
+  - At the start of every non-first turn (after `battle_ui`, before the weather reminder),
+    prints a compact single-line recap: "Last turn ───  ↑ Your X: MoveName → N dmg dealt   ↓
+    Foe Y: attacked → N dmg taken". Zero-damage entries (e.g. status moves or misses) still
+    display correctly (shows 0 dmg).
+  - Verified: all files compile clean; 5 scripted assertions confirmed _recap vars and the
+    "Last turn" banner are present in battle.py and that ast.parse() succeeds.
+
+- [x] **Daily/weekly login-style bonus for returning players** — status: done
+  - Added `last_played_date` (ISO date string) to `save_game()` / `load_game()` in
+    `engine/core.py` (new param `last_played_date=None`, stored in JSON, `setdefault("")`
+    for old saves). Wired into `Game.save()` using `datetime.date.today().isoformat()`.
+  - On `Continue` load path in `main()`, compares `g.last_played_date` to today's date.
+    If different and non-empty, picks a random gift from a small pool (Potions, Super Potions,
+    Antidotes, Elixir, Great Balls, Revive) and grants it directly to `g.inventory`, then
+    shows a 🌅 DAILY BONUS banner. Updates `g.last_played_date = _today` after.
+  - Cannot be farmed: bonus only fires when the saved date differs from real today; saving
+    then reloading on the same day keeps the same date so the check fails harmlessly.
+  - New players (empty `last_played_date`) skip the bonus on first load.
+  - Verified: save/load roundtrip preserves the date; date-comparison logic confirmed correct
+    for same-day (no trigger) and different-day (trigger) scenarios.
+
 ## New tasks — todo
 
-- [ ] **Battle: turn-by-turn damage summary readability** — status: todo
-  - The post-battle summary already reports damage dealt/taken/turns/items/switches in
-    aggregate, but in-battle each hit just prints a single damage line. Consider a brief
-    "this exchange" recap (e.g. last 2 moves and their effect) shown once per turn — would
-    help players following fast multi-hit or weather-chip damage sequences without needing to
-    open the Battle Log every time.
+- [ ] **Move-efficiency tips in post-battle summary** — status: todo
+  - The post-battle summary shows aggregate damage dealt/taken but gives no qualitative hint.
+    If the player used 0 super-effective moves the whole fight, or if the foe resisted every
+    move they used, add a single-line tip (e.g. "Tip: Flamclaw's Fire moves were resisted —
+    try a creature with coverage moves next time."). Low-friction, opt-in feel.
 
-- [ ] **Daily/weekly login-style bonus for returning players** — status: todo
-  - Track `last_played_date` (real-world date, not in-game `season`) in the save file. On
-    first town-menu render of a new real-world day, show a small "Welcome back!" bonus (e.g. a
-    free Potion or a small money gift) — purely a retention/QoL touch, capped at once per
-    real day so it can't be farmed by reloading.
+- [ ] **Creature glossary / lore entries** — status: todo
+  - Each creature species already has a short `desc` in creatures.py used only by the Pokédex
+    detail view. Expand to 2-3 sentence lore blurbs stored in creatures.py, shown in the
+    Pokédex detail view (replacing the current one-liner). Purely flavor — no new mechanics,
+    just makes the world feel richer when browsing caught creatures.
 

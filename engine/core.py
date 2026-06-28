@@ -405,11 +405,12 @@ def save_file_path(slot=1):
 
 SAVE_VERSION = 2
 
-def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, shiny_caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None, item_drought=0):
+def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None, shiny_caught=None, is_champion=False, avatar="♂", visited_towns=None, play_seconds=0, nuzlocke=False, repel_steps=0, defeated_trainers=None, item_drought=0, last_played_date=None):
     data = {
         "version":     SAVE_VERSION,
         "player_name": player_name,
         "town":        town,
+
         "team":        [c.to_dict() for c in team],
         "inventory":   inventory,
         "badges":      badges,
@@ -429,6 +430,7 @@ def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1
         "is_champion": bool(is_champion),
         "avatar":      avatar or "♂",
         "visited_towns": sorted(visited_towns or []),
+        "last_played_date": last_played_date or "",
     }
     with open(save_file_path(slot), "w") as f:
         json.dump(data, f, indent=2)
@@ -437,6 +439,7 @@ def load_game(slot=1):
     path = save_file_path(slot)
     # Legacy fallback for old single save file
     if not os.path.exists(path) and slot == 1 and os.path.exists("save.json"):
+
         path = "save.json"
     if not os.path.exists(path):
         return None
@@ -458,6 +461,7 @@ def load_game(slot=1):
     data.setdefault("repel_steps", 0)
     data.setdefault("item_drought", 0)
     data.setdefault("defeated_trainers", [])
+    data.setdefault("last_played_date", "")
     data["team"] = [Creature.from_dict(d) for d in data["team"]]
     return data
 

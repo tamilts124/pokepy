@@ -1021,12 +1021,29 @@ def run_battle(player_c, enemy_c, inventory, team,
         slow_print(msg)
 
     first_turn = True
+    # Turn recap: tracks last exchange for display at top of next turn
+    _recap = {"player_move": None, "player_dmg": 0, "enemy_move": None, "enemy_dmg": 0}
     while True:
         if not first_turn:
             press_enter()
         first_turn = False
         clear()
         battle_ui(player_c, enemy_c, wild, weather, trainer_name=trainer_name)
+
+        # Show last-turn recap (after first turn, if something happened)
+        if summary.turns > 0 and (_recap["player_move"] or _recap["enemy_move"] or
+                                   _recap["player_dmg"] or _recap["enemy_dmg"]):
+            p_line = (f"{C.GREEN}↑ {_dname(player_c)}: {_recap['player_move']} "
+                      f"→ {_recap['player_dmg']} dmg dealt{C.RESET}"
+                      if _recap["player_move"] else
+                      f"{C.GRAY}↑ {_dname(player_c)}: no move{C.RESET}")
+            e_line = (f"{C.RED}↓ {_dname(enemy_c)}: {_recap['enemy_move']} "
+                      f"→ {_recap['enemy_dmg']} dmg taken{C.RESET}"
+                      if _recap["enemy_move"] else
+                      f"{C.GRAY}↓ {_dname(enemy_c)}: no move{C.RESET}")
+            print(f"  {C.GRAY}─── Last turn ───{C.RESET}  {p_line}   {e_line}")
+        # Reset recap for this turn
+        _recap = {"player_move": None, "player_dmg": 0, "enemy_move": None, "enemy_dmg": 0}
 
         # Brief weather reminder at the start of each turn
         if weather:
@@ -1082,6 +1099,8 @@ def run_battle(player_c, enemy_c, inventory, team,
                 hp_before = enemy_c.hp
                 player_attack(player_c, enemy_c, move_name, boosts, weather)
                 summary.player_dmg_dealt += max(0, hp_before - enemy_c.hp)
+                _recap["player_move"] = move_name
+                _recap["player_dmg"]  = max(0, hp_before - enemy_c.hp)
                 took_turn = True
                 fought    = True
 
@@ -1281,7 +1300,11 @@ def run_battle(player_c, enemy_c, inventory, team,
             # Enemy attacks BEFORE player's move resolves
             hp_before = player_c.hp
             enemy_move(enemy_c, player_c, weather)
-            summary.player_dmg_taken += max(0, hp_before - player_c.hp)
+            _e_dmg = max(0, hp_before - player_c.hp)
+            summary.player_dmg_taken += _e_dmg
+            _recap["enemy_move"] = f"{_dname(enemy_c)} attacked"
+            _recap["enemy_dmg"]  = _e_dmg
+
             # Check player fainted before their move
             if not player_c.is_alive():
                 slow_print(f"  {C.RED}{_dname(player_c)} fainted before it could move!{C.RESET}")
@@ -1324,7 +1347,11 @@ def run_battle(player_c, enemy_c, inventory, team,
             # ── Enemy turn (player was faster or tied) ──
             hp_before = player_c.hp
             enemy_move(enemy_c, player_c, weather)
-            summary.player_dmg_taken += max(0, hp_before - player_c.hp)
+            _e_dmg = max(0, hp_before - player_c.hp)
+            summary.player_dmg_taken += _e_dmg
+            _recap["enemy_move"] = f"{_dname(enemy_c)} attacked"
+            _recap["enemy_dmg"]  = _e_dmg
+
 
         # ── End-of-turn: status damage ──
         apply_status_damage(player_c)
