@@ -1034,6 +1034,30 @@ class Game:
 
     # ── SHOP (buy + sell combined) ──────────────────────────
     def visit_shop(self, stock, badge_count=0):
+        # Items that unlock globally in ALL shops as badge count increases.
+        # This ensures early-town shops progressively stock better goods on revisit.
+        BADGE_BONUS_STOCK = [
+            (1, "Super Potion"),
+            (2, "Great Ball"),
+            (2, "Antidote"),
+            (2, "Awakening"),
+            (3, "Hyper Potion"),
+            (3, "Revive"),
+            (3, "Elixir"),
+            (4, "Ultra Ball"),
+            (4, "Full Heal"),
+            (5, "Full Restore"),
+            (5, "Max Revive"),
+            (6, "Max Elixir"),
+            (7, "Master Ball"),
+        ]
+        # Merge bonus stock into base stock without duplicates, preserving order
+        merged_stock = list(stock)
+        for req_badges, item in BADGE_BONUS_STOCK:
+            if badge_count >= req_badges and item not in merged_stock:
+                merged_stock.append(item)
+        stock = merged_stock
+
         BADGE_LOCKED = {
             "Hyper Potion": 3, "Full Restore": 5, "Ultra Ball": 3,
             "Master Ball": 7, "Max Revive": 5, "Max Elixir": 6,

@@ -96,10 +96,11 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
   - When a capture ball breaks free, shake-count hints shown: 0/1/2/3 shakes each give distinct
     flavor text guiding the player on how close they were and what to try next.
 
-- [ ] **Shop stock scales with badge count** — status: todo
-  - Early shops only sell Potions and Capture Balls. Later shops unlock better items but only if
-    you travel there. Make shops in earlier towns progressively stock better items as you earn
-    badges (e.g. Great Ball unlocks at badge 2, Super Potion at badge 1). Improves pacing.
+- [x] **Shop stock scales with badge count** — status: done
+  - `BADGE_BONUS_STOCK` list in `visit_shop()` defines badge thresholds for 13 items. On every
+    shop visit, bonus items are merged into the town's base stock without duplicates. Result:
+    returning to Greenpath with 3 badges shows Super Potion, Great Ball, Hyper Potion etc.
+    Existing `BADGE_LOCKED` gating is preserved and still hides items from later towns too.
 
 - [x] **Trainer Card: playtime display** — status: done
   - `play_seconds` field added to `Game`, `save_game()`, `load_game()`, and the load path in
