@@ -10,6 +10,14 @@ SAVE_FILE = "save.json"
 # Shiny encounter probability (1 in 100)
 SHINY_CHANCE = 1 / 100
 
+# ─────────────────────────────────────────────
+#  FRIENDSHIP / BOND SYSTEM
+# ─────────────────────────────────────────────
+BASE_FRIENDSHIP = 70    # starting bond value, like a fresh acquaintance
+MAX_FRIENDSHIP  = 100   # fully bonded
+BOND_THRESHOLD  = 100   # friendship needed to unlock the mechanical payoffs below
+BOND_SAVE_CHANCE = 0.10  # 10% chance to survive a lethal hit at 1 HP once per battle
+
 
 # ─────────────────────────────────────────────
 #  NATURE SYSTEM
@@ -93,6 +101,8 @@ class Creature:
         self._sturdy_used    = False   # Sturdy one-per-battle flag
         self.nickname  = None          # optional player-given nickname (≤10 chars)
         self.is_shiny  = False         # cosmetic shiny variant (rolled on wild spawn)
+        self.friendship = BASE_FRIENDSHIP   # 0-100 bond stat; rises with care/wins
+        self._bond_save_used = False   # one-per-battle flag for the maxed-bond survive proc
 
 
         # Moves: use learned set up to current level
@@ -187,10 +197,31 @@ class Creature:
             except Exception:
                 pass
             return
+        # Maxed bond: a fully-friended creature gets one chance per battle to
+        # shrug off what would otherwise be a fatal hit and hang on at 1 HP.
+        if (self.friendship >= BOND_THRESHOLD
+                and not getattr(self, '_bond_save_used', False)
+                and dmg >= self.hp
+                and self.hp > 0):
+            self._bond_save_used = True
+            if random.random() < BOND_SAVE_CHANCE:
+                self.hp = 1
+                try:
+                    from ui.display import C, slow_print
+                    slow_print(f"  {C.MAGENTA}{self.name} refused to go down — your bond held strong! (1 HP){C.RESET}")
+                except Exception:
+                    pass
+                return
         self.hp = max(0, self.hp - dmg)
 
     def heal(self, amount):
         self.hp = min(self.max_hp, self.hp + amount)
+
+    def gain_friendship(self, amount):
+        """Raise this creature's bond, clamped to [0, MAX_FRIENDSHIP]. Returns actual delta."""
+        old = self.friendship
+        self.friendship = max(0, min(MAX_FRIENDSHIP, self.friendship + amount))
+        return self.friendship - old
 
     def reset_stages(self):
         self.stages = {"atk": 0, "def": 0, "spatk": 0, "spdef": 0, "spd": 0, "acc": 0}
@@ -199,6 +230,7 @@ class Creature:
             self.status = None
             self.confusion_turns = 0
         self._sturdy_used = False   # Sturdy resets on switch
+        self._bond_save_used = False   # bond-save proc resets on switch
     def gain_exp(self, amount):
         """Returns list of events: level-ups, new moves, evolutions."""
         events = []
@@ -219,6 +251,7 @@ class Creature:
             self.sp_def  = self._calc_stat(bs[4], "sp_def")
             self.spd     = self._calc_stat(bs[5], "spd")
             events.append(("levelup", self.level))
+            self.gain_friendship(1)   # leveling up deepens the bond a little
             # New moves?
             for lv, mvs in CREATURES[self.name]["moves_learned"].items():
                 if lv == self.level:
@@ -271,6 +304,7 @@ class Creature:
             "nature":      self.nature,
             "nickname":    self.nickname,
             "is_shiny":    self.is_shiny,
+            "friendship":  self.friendship,
 
         }
 
@@ -296,6 +330,7 @@ class Creature:
         c._held_item_used = False   # always reset on load; re-triggers fresh each battle
         c.nickname    = d.get("nickname")       # None if old save (no nickname)
         c.is_shiny    = d.get("is_shiny", False)  # False for old saves
+        c.friendship  = d.get("friendship", BASE_FRIENDSHIP)  # default bond for old saves
         return c
 
 
@@ -372,6 +407,8 @@ def calc_damage(attacker, defender, move_name, weather=None):
         dealt_mult = ability_damage_dealt_mult(attacker, move["type"], weather)
         taken_mult = ability_damage_taken_mult(defender, move["type"], move["power"], weather)
         crit_denom = 8 if held_item_crit_bonus(attacker) else 16
+        if attacker.friendship >= BOND_THRESHOLD:
+            crit_denom = max(4, crit_denom - 4)   # maxed bond shaves the crit roll further
     except ImportError:
         dealt_mult = 1.0
         taken_mult = 1.0

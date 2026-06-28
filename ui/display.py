@@ -136,6 +136,23 @@ def creature_card(c, prefix="", show_exp=False):
     info_line = "  │  ".join(s for s in [ability_str, nature_str] if s)
     if info_line:
         print(f"{prefix}{C.GRAY}{info_line}{C.RESET}")
+    # Bond/friendship indicator — only meaningful for the player's own creatures
+    if show_exp and hasattr(c, 'friendship'):
+        fr = c.friendship
+        hearts = "♥" * (fr // 20) + "♡" * (5 - fr // 20)
+        if fr >= 100:
+            bond_label = "Best Friends!"
+            bond_color = C.MAGENTA
+        elif fr >= 80:
+            bond_label = "Close Bond"
+            bond_color = C.CYAN
+        elif fr <= 40:
+            bond_label = "Distant"
+            bond_color = C.GRAY
+        else:
+            bond_label = "Friendly"
+            bond_color = C.GREEN
+        print(f"{prefix}{bond_color}Bond: {hearts}  {bond_label}{C.RESET}")
     print(f"{prefix}HP  {hp_bar(c.hp, c.max_hp)}")
     # EXP bar (only for player creatures that track exp)
     if show_exp and hasattr(c, 'exp') and hasattr(c, 'exp_to_next') and c.exp_to_next > 0:

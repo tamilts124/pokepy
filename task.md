@@ -555,12 +555,53 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ## New tasks — todo
 
-- [ ] **Friendship / affection system** — status: todo
-  - Creatures that stay on the team and battle a lot (or are given Berries/held items, win
-    streaks, etc.) build up a hidden `friendship` stat. At high friendship, give a small but
-    real mechanical payoff — e.g. a slightly higher crit chance, or a "the foe's attack missed
-    because of your bond!" style flavor save once per battle — so loyalty briefly matters
-    without needing a full breeding/egg system. Persist via `to_dict`/`from_dict` like other
-    per-creature fields (nature, nickname, is_shiny). Should feel like a natural follow-on to
-    the nickname system and held-item bonding already in the game.
+- [x] **Friendship / affection system** — status: done
+  - Verified Session 9's final state first: working tree clean and in sync with origin
+    (commit `5f629e7`), all 6 core files `py_compile` clean, no TODO/FIXME/stub/conflict
+    markers anywhere in the repo, and a real `main.py` launch (scripted stdin) rendered the
+    banner, daily-bonus screen, and town menu correctly — only EOF came from the stdin
+    script running out, the same harness caveat noted in Sessions 2/5/9, not a game fault.
+    No task was left in-progress, so this picked up the next queued item fresh.
+  - Implementation: `Creature.friendship` (0–100, `BASE_FRIENDSHIP = 70` default) added in
+    `engine/core.py`, persisted via `to_dict`/`from_dict` (old saves without the key default
+    to 70, same pattern as `nickname`/`is_shiny`). Sources of gain: +2 to the battle winner
+    and +1 to each bench creature that received shared EXP (`award_exp()` in `main.py`), +1
+    per level-up (`gain_exp()`), +2 whenever a one-use berry actually triggers for that
+    creature (`check_held_item()` in `engine/battle.py` — status-cure, half-HP heal, and
+    low-HP stat berries all award it at their existing trigger point).
+  - Mechanical payoff at `BOND_THRESHOLD = 100` (maxed bond) — picked two small but real
+    effects rather than one, so the system has more than a single flat number behind it:
+    (1) crit-roll denominator drops by 4 in `calc_damage()` (stacks with Scope Lens, floored
+    at 4) — verified statistically; (2) a 10%-chance, once-per-battle "bond save" in
+    `Creature.take_damage()` that survives an otherwise-lethal hit at 1 HP with its own flavor
+    line, mirroring the existing Sturdy implementation pattern; the one-per-battle flag
+    (`_bond_save_used`) resets in `reset_stages()` exactly like Sturdy's own flag.
+  - UI: `creature_card()` in `ui/display.py` shows a `♥♥♥♡♡`-style 5-heart bar plus a tier
+    label (Distant / Friendly / Close Bond / Best Friends!) under the ability/nature line —
+    gated on `show_exp` (the existing "this is the player's own creature" flag) so it never
+    shows on enemy/wild cards.
+  - Verified: new `_test_friendship.py` (kept in the repo alongside the project's other
+    `_test_*.py` regression scripts) — default value + clamping in both directions,
+    to_dict/from_dict round-trip, old-save fallback to the default, +1 on a forced level-up,
+    bond-save procs at/above threshold across 500 guaranteed-lethal trials and never below
+    threshold, confirms it only fires once per battle and clears via `reset_stages()`, and a
+    20k-trial statistical check that the maxed-bond crit-rate is meaningfully higher than
+    baseline (6.3% → ~8.0%, consistent with the 16→12 denominator change). Re-ran the full
+    existing regression suite (`_test_lore.py`, `_verify_lore_fix.py`, `_test_type_chart.py`,
+    `_test_scope_lens_fix.py`, `_test_move_tips.py`) — all still pass, confirming no
+    regressions. Rendered `creature_card()` against a real save's team via a throwaway script
+    (deleted after use) to confirm the heart bar/label actually display correctly at both the
+    default (70 → "Friendly") and maxed (100 → "Best Friends!") tiers; `py_compile` clean on
+    all five touched files.
+
+## New tasks — todo
+
+- [ ] **Friendship-aware capture rate** — status: todo
+  - Now that `Creature.friendship` exists, a natural follow-on: let a trainer's *own* low-HP
+    creature occasionally calm a wild creature of the same species/type down a little before
+    a catch attempt (e.g. a small, capped bonus to `try_capture()`'s effective ball rate when
+    the lead creature is at high friendship), so the new bond stat has a payoff outside of
+    battle survival too. Keep it small — this should nudge catch odds, not replace the
+    existing Ultra/Master Ball progression.
+
 

@@ -507,6 +507,7 @@ class Game:
             bench_exp = max(1, exp // 2)
             for bc in bench:
                 slow_print(f"  {bc.name} gained {C.GRAY}{bench_exp} EXP (shared){C.RESET}!")
+                bc.gain_friendship(1)
                 b_events = bc.gain_exp(bench_exp)
                 for etype, val in b_events:
                     if etype == "levelup":
@@ -550,6 +551,7 @@ class Game:
                             print('\a', end='', flush=True)
 
         slow_print(f"\n  {winner.name} gained {C.YELLOW}{exp} EXP{C.RESET}!")
+        winner.gain_friendship(2)
         events = winner.gain_exp(exp)
         for etype, val in events:
             if etype == "levelup":

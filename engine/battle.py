@@ -498,12 +498,14 @@ def check_held_item(c):
             c.sleep_turns = 0
             c.confusion_turns = 0
             c._held_item_used = True
+            c.gain_friendship(2)
             return f"  {C.GREEN}{_dname(c)}'s {item} cured its status!{C.RESET}"
         if hdata["trigger"] == "half_hp" and c.hp <= c.max_hp // 2:
             heal = c.max_hp // 4 if item == "Sitrus Berry" else 10
             actual = min(heal, c.max_hp - c.hp)
             c.heal(heal)
             c._held_item_used = True
+            c.gain_friendship(2)
             return f"  {C.GREEN}{_dname(c)}'s {item} restored {actual} HP!{C.RESET}"
 
         # Seasonal stat berries: trigger below 25% HP
@@ -512,6 +514,7 @@ def check_held_item(c):
             stat = stat_map[hdata["trigger"]]
             c.apply_stage(stat, 1)
             c._held_item_used = True
+            c.gain_friendship(2)
             stat_names = {"spd": "Speed", "atk": "Attack", "def": "Defense"}
             return f"  {C.GREEN}{_dname(c)}'s {item} raised its {stat_names[stat]}!{C.RESET}"
 
