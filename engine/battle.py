@@ -1125,6 +1125,15 @@ def run_battle(player_c, enemy_c, inventory, team,
                     return "caught", enemy_c
                 else:
                     slow_print(f"  {C.RED}Oh no! {enemy_c.name} broke free!{C.RESET}")
+                    # Shake-count feedback: tells the player how close they were
+                    _shake_hints = {
+                        0: f"  {C.GRAY}It didn't even twitch. Weaken it more or use a better ball.{C.RESET}",
+                        1: f"  {C.YELLOW}One shake — so close! Try lowering its HP further.{C.RESET}",
+                        2: f"  {C.YELLOW}Two shakes! Almost there. A Great Ball might do it.{C.RESET}",
+                        3: f"  {C.YELLOW}Three shakes — tantalizingly close! Try an Ultra Ball.{C.RESET}",
+                    }
+                    slow_print(_shake_hints.get(shakes, ""))
+
 
             elif idata["type"] == "revive":
                 fainted = [c for c in team if not c.is_alive()]
