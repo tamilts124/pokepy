@@ -120,6 +120,8 @@ class Game:
         self.badges      = []
         self.money       = 3000
         self.steps       = 0
+        self.play_seconds = 0            # accumulated playtime in seconds
+        self._session_start = time.time() # start of current session
         self.save_slot   = 1
         self.rival       = RivalState()
         self.achievements = []           # list of earned achievement keys
@@ -414,6 +416,9 @@ class Game:
 
 
     def save(self):
+        # Accumulate current session time, then reset session start
+        self.play_seconds += int(time.time() - self._session_start)
+        self._session_start = time.time()
         save_game(self.player_name, self.town, self.team,
                   self.inventory, self.badges, self.money,
                   self.steps, slot=self.save_slot,
@@ -424,7 +429,8 @@ class Game:
                   caught=getattr(self, 'caught', set()),
                   is_champion=getattr(self, 'is_champion', False),
                   avatar=getattr(self, 'avatar', '♂'),
-                  visited_towns=getattr(self, 'visited_towns', set()))
+                  visited_towns=getattr(self, 'visited_towns', set()),
+                  play_seconds=self.play_seconds)
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
 
@@ -951,6 +957,9 @@ class Game:
         slow_print(f"  Money   : {C.YELLOW}₽{self.money}{C.RESET}")
         slow_print(f"  Badges  : {len(self.badges)}/{len(REQUIRED_BADGES)}")
         slow_print(f"  Battles : {self.steps}")
+        _ps = getattr(self, 'play_seconds', 0)
+        _ph, _pm = _ps // 3600, (_ps % 3600) // 60
+        slow_print(f"  Playtime: {_ph}h {_pm:02d}m")
         slow_print(f"  Town    : {self.town}")
         slow_print(f"  Time    : {tod_color}{tod_icon} {tod}{C.RESET}")
         # Rival score
@@ -1997,6 +2006,8 @@ def main():
         g.badges      = saved["badges"]
         g.money       = saved["money"]
         g.steps       = saved.get("steps", 0)
+        g.play_seconds = saved.get("play_seconds", 0)
+        g._session_start = time.time()   # start fresh timer for this session
         g.achievements = saved.get("achievements", [])
         g.season      = saved.get("season", "Spring")
         g.seen        = set(saved.get("seen", []))

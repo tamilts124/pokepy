@@ -92,42 +92,37 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
 
 ## New tasks — todo
 
-- [ ] **Catch rate feedback in battle** — status: todo
-  - When a capture ball breaks free, show how close it was ("Almost had it! 3 shakes" vs "It
-    escaped immediately"). Currently always generic "broke free". The `shakes` count is already
-    returned by `animated_capture()` — just display it as flavor text.
+- [x] **Catch rate feedback in battle** — status: done (commit a74d4b9)
+  - When a capture ball breaks free, shake-count hints shown: 0/1/2/3 shakes each give distinct
+    flavor text guiding the player on how close they were and what to try next.
 
 - [ ] **Shop stock scales with badge count** — status: todo
   - Early shops only sell Potions and Capture Balls. Later shops unlock better items but only if
     you travel there. Make shops in earlier towns progressively stock better items as you earn
     badges (e.g. Great Ball unlocks at badge 2, Super Potion at badge 1). Improves pacing.
 
-- [ ] **Trainer Card: playtime display** — status: todo
-  - The Trainer Card tracks `self.steps` (battle count) but not real playtime. Add a
-    `play_seconds` int to Game that is incremented on save and shown on the Trainer Card as
-    "Playtime: Xh Ym". Simple and adds a nice personal stat.
+- [x] **Trainer Card: playtime display** — status: done
+  - `play_seconds` field added to `Game`, `save_game()`, `load_game()`, and the load path in
+    `main()`. Accumulated each save (session elapsed time). Old saves default to 0 gracefully.
+    Trainer Card now shows "Playtime: Xh YYm" below Battles.
 
 - [ ] **Nuzlocke / challenge mode flag** — status: todo
   - Add an optional "Nuzlocke" mode toggle at new-game: if enabled, any creature that faints is
     permanently removed from the team (deleted, not just fainted). Show a dramatic death message.
     Stored as `Game.nuzlocke: bool`, checked after every battle loss in `award_exp`.
 
-- [x] **Creature nickname system** — status: done
+- [x] **Creature nickname system** — status: done (commit 8721b95)
   - After catching a wild creature, offer the player the option to give it a nickname (short
     string, ≤10 chars). Store as `Creature.nickname`; display nickname (if set) in battle and
     menus instead of species name, with species in parentheses. Save/load via `to_dict`/`from_dict`.
   - Nickname prompt at all 3 catch sites (explore, fish, grotto). Rename option in Creatures menu.
     `_dname()` in battle.py, `creature_card()` in display.py, team list + detail banner in main.py all updated.
 
-- [ ] **Battle weather visual enhancement** — status: todo
-  - Weather is shown as a single line at battle start but never again unless the player looks.
-    Print a brief weather reminder line at the start of each turn (e.g. "☀ Sunny boosts Fire
-    moves!") so players remember it's active. Only show when weather is non-None.
+- [x] **Battle weather visual enhancement** — status: done (commit c887dde)
+  - Brief weather reminder printed at the start of each turn when weather is active.
 
-- [ ] **Move type color in fight menu** — status: todo
-  - The fight menu shows move name, PP, power, and desc — but the move's type is not color-coded.
-    Use the existing `TYPE_COLORS` dict from display.py to tint the type tag next to each move
-    name in the fight menu. Purely visual, zero gameplay impact.
+- [x] **Move type color in fight menu** — status: done (commit 353d438)
+  - TYPE_COLORS applied to type tag next to move name in fight menu. Uppercase type label.
 
 - [ ] **Inn "heal preview" before paying** — status: todo
   - Currently the Inn shows the team summary, asks for payment confirmation, then heals. Add a
