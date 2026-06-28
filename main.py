@@ -39,6 +39,7 @@ ACHIEVEMENTS = {
     "grotto_found":    {"name": "Grotto Explorer",      "desc": "Discover a hidden grotto."},
     "rival_winner":    {"name": "Rival Rivalry",        "desc": "Defeat your rival 3 times."},
     "battle100":       {"name": "Veteran Trainer",      "desc": "Fight 100 battles."},
+    "pokedex_complete": {"name": "Dex Master",           "desc": "Catch every creature in the Pokédex."},
 }
 
 # ── Move Tutor data ──────────────────────────────────────
@@ -98,6 +99,8 @@ class Game:
         self.achievements = []           # list of earned achievement keys
         self.season      = current_season()
         self._defeated_trainers = set()  # track rematched trainers by (area, name_hash)
+        self.seen        = set()         # creature names encountered in the wild
+        self.caught      = set()         # creature names successfully captured
 
     # ── Achievement checker ────────────────────────────
     def _check_achievement(self, key):
@@ -106,6 +109,74 @@ class Game:
             ach = ACHIEVEMENTS[key]
             slow_print(f"  {C.YELLOW}🏆  Achievement unlocked: {C.BOLD}{ach['name']}{C.RESET}")
             slow_print(f"     {C.GRAY}{ach['desc']}{C.RESET}")
+
+    def _check_pokedex_completion(self):
+        """Fire the pokedex_complete achievement + reward when all creatures caught."""
+        total = len(CREATURES)
+        if len(self.caught) >= total and "pokedex_complete" not in self.achievements:
+            self._check_achievement("pokedex_complete")
+            # Reward: a free Master Ball
+            self.inventory["Master Ball"] = self.inventory.get("Master Ball", 0) + 1
+            slow_print(f"  {C.MAGENTA}★★  You've caught all {total} creatures!  ★★{C.RESET}")
+            slow_print(f"  {C.YELLOW}As a reward, you receive a {C.BOLD}Master Ball{C.RESET}{C.YELLOW}!{C.RESET}")
+
+    # ── Pokédex ────────────────────────────────────────
+    def open_pokedex(self):
+        from data.creatures import CREATURES as CDEX
+        all_names = sorted(CDEX.keys())
+        total     = len(all_names)
+        seen_cnt  = len(self.seen)
+        caught_cnt = len(self.caught)
+
+        clear()
+        section("📖  POKÉDEX")
+        print(f"  Seen: {C.CYAN}{seen_cnt}/{total}{C.RESET}   "
+              f"Caught: {C.GREEN}{caught_cnt}/{total}{C.RESET}\n")
+
+        # Completion bar
+        pct = int((caught_cnt / total) * 20) if total else 0
+        bar = "█" * pct + "░" * (20 - pct)
+        print(f"  Progress  {C.GREEN}[{bar}]{C.RESET} {int(caught_cnt/total*100) if total else 0}%\n")
+
+        # Paged listing (20 per page)
+        PAGE = 20
+        page = 0
+        max_page = (total - 1) // PAGE
+
+        while True:
+            clear()
+            section("📖  POKÉDEX")
+            print(f"  Seen {C.CYAN}{seen_cnt}/{total}{C.RESET}  │  "
+                  f"Caught {C.GREEN}{caught_cnt}/{total}{C.RESET}  │  "
+                  f"Page {page+1}/{max_page+1}\n")
+
+            start = page * PAGE
+            chunk = all_names[start:start + PAGE]
+
+            for name in chunk:
+                if name in self.caught:
+                    data = CDEX[name]
+                    types_str = "/".join(t.upper() for t in data["type"])
+                    print(f"  {C.GREEN}●{C.RESET} {C.BOLD}{name:<14}{C.RESET}  "
+                          f"{C.GRAY}[{types_str}]{C.RESET}")
+                elif name in self.seen:
+                    print(f"  {C.YELLOW}◐{C.RESET} {name:<14}  {C.GRAY}(seen){C.RESET}")
+                else:
+                    print(f"  {C.GRAY}○ {'???':<14}  ???{C.RESET}")
+
+            print()
+            nav = []
+            if page > 0:         nav.append("◀  Prev page")
+            if page < max_page:  nav.append("▶  Next page")
+            nav.append("← Back")
+            choice = menu("", nav)
+            label  = nav[choice]
+            if label == "◀  Prev page":
+                page -= 1
+            elif label == "▶  Next page":
+                page += 1
+            else:
+                return
 
     # ── EXP & level-up handler (shared helper) ──────────
     def _handle_exp_events(self, creature, events):
@@ -273,7 +344,9 @@ class Game:
                   self.steps, slot=self.save_slot,
                   rival=getattr(self, 'rival', None),
                   achievements=getattr(self, 'achievements', []),
-                  season=getattr(self, 'season', 'Spring'))
+                  season=getattr(self, 'season', 'Spring'),
+                  seen=getattr(self, 'seen', set()),
+                  caught=getattr(self, 'caught', set()))
         slow_print(f"  {C.GREEN}Game saved to slot {self.save_slot}!{C.RESET}")
 
 
@@ -1197,6 +1270,7 @@ class Game:
                     result, obj = run_battle(player_c, wild, self.inventory,
                                              self.team, wild=True, weather=weather)
                     if result == "win":
+                        self.seen.add(wild.name)
                         self._count_battle()
                         self.award_exp(player_c, wild)
                         self.earn_money(max(wild.level * 15, 100))
@@ -1207,6 +1281,8 @@ class Game:
                     elif result == "caught":
                         self._count_battle()
                         captured = obj
+                        self.seen.add(captured.name)
+                        self.caught.add(captured.name)
                         # If the captured wild was holding an item, give it to the player
                         if captured.held_item:
                             stolen = captured.held_item
@@ -1217,6 +1293,7 @@ class Game:
                             self.team.append(captured)
                             slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
                             self._check_achievement("first_catch")
+                            self._check_pokedex_completion()
                             if len(self.team) == 6:
                                 self._check_achievement("team_full")
                         else:
@@ -1376,6 +1453,7 @@ class Game:
                 result, obj = run_battle(player_c, wild, self.inventory,
                                          self.team, wild=True, weather=None)
                 if result == "win":
+                    self.seen.add(wild.name)
                     self._count_battle()
                     self.award_exp(player_c, wild)
                     self.earn_money(max(wild.level * 15, 100))
@@ -1386,6 +1464,8 @@ class Game:
                 elif result == "caught":
                     self._count_battle()
                     captured = obj
+                    self.seen.add(captured.name)
+                    self.caught.add(captured.name)
                     if captured.held_item:
                         stolen = captured.held_item
                         self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
@@ -1396,6 +1476,7 @@ class Game:
                         slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
                         self._check_achievement("first_catch")
                         self._check_achievement("first_fish")
+                        self._check_pokedex_completion()
                         if len(self.team) == 6:
                             self._check_achievement("team_full")
                     else:
@@ -1473,6 +1554,7 @@ class Game:
             result, obj = run_battle(player_c, wild, self.inventory,
                                      self.team, wild=True, weather=None)
             if result == "win":
+                self.seen.add(wild.name)
                 self._count_battle()
                 self.award_exp(player_c, wild)
                 self.earn_money(max(wild.level * 15, 100))
@@ -1482,6 +1564,8 @@ class Game:
             elif result == "caught":
                 self._count_battle()
                 captured = obj
+                self.seen.add(captured.name)
+                self.caught.add(captured.name)
                 if captured.held_item:
                     stolen = captured.held_item
                     self.inventory[stolen] = self.inventory.get(stolen, 0) + 1
@@ -1491,6 +1575,7 @@ class Game:
                     self.team.append(captured)
                     slow_print(f"  {C.GREEN}★  {captured.name} joined your team!{C.RESET}")
                     self._check_achievement("first_catch")
+                    self._check_pokedex_completion()
                     if len(self.team) == 6:
                         self._check_achievement("team_full")
                 else:
@@ -1558,6 +1643,7 @@ class Game:
             opts += [
                 "🎒  Bag",
                 "👥  Creatures",
+                "📖  Pokédex",
                 "🏅  Badges",
                 "📊  Trainer Card",
                 "🗺  World Map",
@@ -1601,6 +1687,8 @@ class Game:
                 self.open_bag()
             elif label == "Creatures":
                 self.open_creatures()
+            elif label == "Pokédex":
+                self.open_pokedex()
             elif label == "Badges":
                 self.open_badges()
             elif label == "Trainer Card":
@@ -1736,6 +1824,8 @@ def main():
         g.steps       = saved.get("steps", 0)
         g.achievements = saved.get("achievements", [])
         g.season      = saved.get("season", "Spring")
+        g.seen        = set(saved.get("seen", []))
+        g.caught      = set(saved.get("caught", []))
         # Load rival state
         from engine.rival import RivalState
         rival_data = saved.get("rival")

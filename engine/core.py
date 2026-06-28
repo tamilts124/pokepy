@@ -386,7 +386,7 @@ def save_file_path(slot=1):
 
 SAVE_VERSION = 2
 
-def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None):
+def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1, rival=None, achievements=None, season=None, seen=None, caught=None):
     data = {
         "version":     SAVE_VERSION,
         "player_name": player_name,
@@ -399,6 +399,8 @@ def save_game(player_name, town, team, inventory, badges, money, steps=0, slot=1
         "rival":       rival.to_dict() if rival is not None else None,
         "achievements": achievements or [],
         "season":      season or "Spring",
+        "seen":        sorted(seen or []),
+        "caught":      sorted(caught or []),
     }
     with open(save_file_path(slot), "w") as f:
         json.dump(data, f, indent=2)
@@ -417,6 +419,8 @@ def load_game(slot=1):
         data["version"] = 1
         data.setdefault("achievements", [])
         data.setdefault("season", "Spring")
+    data.setdefault("seen", [])
+    data.setdefault("caught", [])
     data["team"] = [Creature.from_dict(d) for d in data["team"]]
     return data
 
