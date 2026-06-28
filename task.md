@@ -55,9 +55,18 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     `pokedex_complete` achievement once `len(self.caught) >= len(CREATURES)`. Fixed alongside the
     Pokédex task above (achievement entry was missing; now added).
 
-- [ ] **In-battle X-item use** — status: todo
-  - X Attack / X Defense / X Speed usable from Bag during battle (not just "use this in battle" message).
-  - notes: items already in ITEMS dict as "boost" type; need in-battle branch in battle.py bag handler.
+- [x] **In-battle X-item use** — status: done
+  - On inspection, X Attack/Defense/Sp.Atk/Sp.Def/Speed were already fully wired into the battle Bag
+    menu (engine/battle.py `idata["type"] == "boost"` branch) — not a stub, contrary to the old
+    task note. However, found a real bug while verifying: X Speed's boost was applied to the
+    per-battle `boosts` dict but never actually consulted anywhere — `Creature.effective_spd()`
+    (used for turn-order speed comparisons) only read persistent stat *stages*, so buying and using
+    X Speed printed "Speed rose!" but had **zero effect on turn order** — a silent no-op.
+  - Fixed by mirroring the existing X Defense/Sp.Def pattern: added a `_xspd_boost` attribute on
+    Creature, set it in the boost-item branch, reset it at battle start and at every switch-in
+    (3 sites), and applied it inside `effective_spd()` in engine/core.py.
+  - Verified with an isolated unit check (`effective_spd()` increases correctly when `_xspd_boost`
+    is set) plus a full `py_compile` pass on all touched files.
 
 - [ ] **Post-game content** — status: todo
   - After Champion: Elite Four rematch at lv 70+, Champion title on Trainer Card.

@@ -146,6 +146,10 @@ class Creature:
 
     def effective_spd(self, weather=None):
         spd = max(1, int(self.spd * self.stage_mult("spd")))
+        # X Speed item boost (set via battle.py bag handler on use)
+        xspd = getattr(self, '_xspd_boost', 1.0)
+        if xspd != 1.0:
+            spd = max(1, int(spd * xspd))
         if self.status == "paralyzed":
             spd = max(1, spd // 2)
         # Ability speed multiplier (Swift Swim, Speed Boost stages already in stages)

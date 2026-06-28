@@ -994,11 +994,13 @@ def run_battle(player_c, enemy_c, inventory, team,
     player_c._choice_lock    = None
     player_c._xdef_boost     = 1.0
     player_c._xspdef_boost   = 1.0
+    player_c._xspd_boost     = 1.0
     enemy_c.reset_stages()
     enemy_c._held_item_used  = False
     enemy_c._choice_lock     = None
     enemy_c._xdef_boost      = 1.0
     enemy_c._xspdef_boost    = 1.0
+    enemy_c._xspd_boost      = 1.0
 
     # Fire on_entry abilities for both sides at battle start
     for msg in fire_on_entry(player_c, enemy_c, weather):
@@ -1147,6 +1149,8 @@ def run_battle(player_c, enemy_c, inventory, team,
                     player_c._xdef_boost = boosts["def"]
                 elif stat == "spdef":
                     player_c._xspdef_boost = boosts["spdef"]
+                elif stat == "spd":
+                    player_c._xspd_boost = boosts["spd"]
                 slow_print(f"  {C.GREEN}{player_c.name}'s {STAT_NAMES.get(stat, stat.upper())} rose!{C.RESET}")
 
         # ══ SWITCH ══
@@ -1157,6 +1161,7 @@ def run_battle(player_c, enemy_c, inventory, team,
                 boosts = {"atk": 1.0, "def": 1.0, "spatk": 1.0, "spdef": 1.0}
                 player_c._xdef_boost   = 1.0
                 player_c._xspdef_boost = 1.0
+                player_c._xspd_boost   = 1.0
                 for msg in fire_on_entry(player_c, enemy_c, weather):
                     slow_print(msg)
                 took_turn = True
@@ -1242,6 +1247,7 @@ def run_battle(player_c, enemy_c, inventory, team,
                     boosts = {"atk": 1.0, "def": 1.0, "spatk": 1.0, "spdef": 1.0}
                     player_c._xdef_boost   = 1.0
                     player_c._xspdef_boost = 1.0
+                    player_c._xspd_boost   = 1.0
                     for msg in fire_on_entry(player_c, enemy_c, weather):
                         slow_print(msg)
                     slow_print(f"  {C.GREEN}{player_c.name} is sent out!{C.RESET}")
@@ -1322,6 +1328,7 @@ def run_battle(player_c, enemy_c, inventory, team,
                 boosts = {"atk": 1.0, "def": 1.0, "spatk": 1.0, "spdef": 1.0}
                 player_c._xdef_boost   = 1.0
                 player_c._xspdef_boost = 1.0
+                player_c._xspd_boost   = 1.0
                 for msg in fire_on_entry(player_c, enemy_c, weather):
                     slow_print(msg)
                 slow_print(f"  {C.GREEN}{player_c.name} is sent out!{C.RESET}")
