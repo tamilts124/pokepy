@@ -625,10 +625,16 @@ class Game:
             for c in self.team:
                 faint_tag = f" {C.RED}[FAINTED]{C.RESET}" if not c.is_alive() else ""
                 held_tag  = f"  {C.YELLOW}[{c.held_item}]{C.RESET}" if c.held_item else ""
+                nick = getattr(c, 'nickname', None)
+                if nick:
+                    cname_str = f"{C.BOLD}{nick}{C.RESET} {C.GRAY}({c.name}){C.RESET}"
+                else:
+                    cname_str = f"{C.BOLD}{c.name}{C.RESET}"
                 opts.append(
-                    f"{C.BOLD}{c.name}{C.RESET} Lv.{c.level}  "
+                    f"{cname_str} Lv.{c.level}  "
                     f"{hp_bar(c.hp, c.max_hp, 12)}{faint_tag}{held_tag}"
                 )
+
             opts.append("🔀  Reorder team")
             opts.append("← Back")
             idx = menu("Which creature?", opts)
@@ -645,7 +651,10 @@ class Game:
             while True:
                 clear()
                 # ── Full stat card ──
-                banner(f"  {c.name}  Lv.{c.level}  ", C.CYAN)
+                _nick = getattr(c, 'nickname', None)
+                _banner_name = f"{_nick} ({c.name})" if _nick else c.name
+                banner(f"  {_banner_name}  Lv.{c.level}  ", C.CYAN)
+
                 from ui.display import TYPE_COLORS
                 types_str = "/".join(
                     f"{TYPE_COLORS.get(t, C.WHITE)}{t.upper()}{C.RESET}"
@@ -727,12 +736,29 @@ class Game:
                     "⚔  Reorder moves",
                     "📦  Change held item",
                     "🎒  Use item",
+                    "✏  Rename",
                     "← Back to team",
                 ]
                 ac = menu("Action:", actions)
 
+                # ── Rename ──
+                if ac == 3:
+                    cur_nick = getattr(c, 'nickname', None) or ""
+                    slow_print(f"  Current name: {C.BOLD}{cur_nick or c.name}{C.RESET}"
+                               f"{'  ' + C.GRAY + '(' + c.name + ')' + C.RESET if cur_nick else ''}")
+                    slow_print(f"  {C.GRAY}Enter a nickname (max 10 chars, blank to clear):{C.RESET}")
+                    raw = input("  > ").strip()[:10]
+                    c.nickname = raw if raw else None
+                    if c.nickname:
+                        slow_print(f"  {C.GREEN}{c.name} will now be called {C.BOLD}{c.nickname}{C.RESET}{C.GREEN}!{C.RESET}")
+                    else:
+                        slow_print(f"  {C.GRAY}Nickname cleared — back to {c.name}.{C.RESET}")
+                    press_enter()
+                    continue
+
                 # ── Reorder moves ──
-                if ac == 0:
+                elif ac == 0:
+
                     if len(c.moves) < 2:
                         slow_print(f"  {C.YELLOW}Only one move — nothing to reorder.{C.RESET}")
                         press_enter(); continue
@@ -873,8 +899,9 @@ class Game:
                         press_enter()
 
                 # ── Back ──
-                elif ac == 3:
+                elif ac == 4:
                     break
+
 
     def _reorder_team_inline(self):
         """Reorder team by picking a creature and a destination slot."""
@@ -1381,6 +1408,12 @@ class Game:
                             self._check_pokedex_completion()
                             if len(self.team) == 6:
                                 self._check_achievement("team_full")
+                            # Offer nickname
+                            slow_print(f"  {C.GRAY}Give {captured.name} a nickname? (blank to skip):{C.RESET}")
+                            _nick = input("  > ").strip()[:10]
+                            if _nick:
+                                captured.nickname = _nick
+                                slow_print(f"  {C.GREEN}Nicknamed {C.BOLD}{_nick}{C.RESET}{C.GREEN}!{C.RESET}")
                         else:
                             slow_print(f"  {C.YELLOW}Team full (max 6)! "
                                        f"{captured.name} was released.{C.RESET}")
@@ -1583,6 +1616,12 @@ class Game:
                         self._check_pokedex_completion()
                         if len(self.team) == 6:
                             self._check_achievement("team_full")
+                        # Offer nickname
+                        slow_print(f"  {C.GRAY}Give {captured.name} a nickname? (blank to skip):{C.RESET}")
+                        _nick = input("  > ").strip()[:10]
+                        if _nick:
+                            captured.nickname = _nick
+                            slow_print(f"  {C.GREEN}Nicknamed {C.BOLD}{_nick}{C.RESET}{C.GREEN}!{C.RESET}")
                     else:
                         slow_print(f"  {C.YELLOW}Team full! {captured.name} was released.{C.RESET}")
                     press_enter()
@@ -1682,6 +1721,12 @@ class Game:
                     self._check_pokedex_completion()
                     if len(self.team) == 6:
                         self._check_achievement("team_full")
+                    # Offer nickname
+                    slow_print(f"  {C.GRAY}Give {captured.name} a nickname? (blank to skip):{C.RESET}")
+                    _nick = input("  > ").strip()[:10]
+                    if _nick:
+                        captured.nickname = _nick
+                        slow_print(f"  {C.GREEN}Nicknamed {C.BOLD}{_nick}{C.RESET}{C.GREEN}!{C.RESET}")
                 else:
                     slow_print(f"  {C.YELLOW}Team full! {captured.name} was released.{C.RESET}")
                 press_enter()

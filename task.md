@@ -112,10 +112,12 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     permanently removed from the team (deleted, not just fainted). Show a dramatic death message.
     Stored as `Game.nuzlocke: bool`, checked after every battle loss in `award_exp`.
 
-- [ ] **Creature nickname system** — status: todo
+- [x] **Creature nickname system** — status: done
   - After catching a wild creature, offer the player the option to give it a nickname (short
     string, ≤10 chars). Store as `Creature.nickname`; display nickname (if set) in battle and
     menus instead of species name, with species in parentheses. Save/load via `to_dict`/`from_dict`.
+  - Nickname prompt at all 3 catch sites (explore, fish, grotto). Rename option in Creatures menu.
+    `_dname()` in battle.py, `creature_card()` in display.py, team list + detail banner in main.py all updated.
 
 - [ ] **Battle weather visual enhancement** — status: todo
   - Weather is shown as a single line at battle start but never again unless the player looks.

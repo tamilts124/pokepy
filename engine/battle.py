@@ -50,11 +50,15 @@ def type_hint(move_type, defender_types):
 
 def _dname(c):
     """Return the creature's tagged display name for battle messages.
+    If the creature has a nickname, shows 'Nick (Species)'.
     Set c._battle_tag = 'Your' or 'Foe'/'Wild' in run_battle before use."""
-    tag = getattr(c, '_battle_tag', '')
+    tag      = getattr(c, '_battle_tag', '')
+    nickname = getattr(c, 'nickname', None)
+    display  = f"{nickname} ({c.name})" if nickname else c.name
     if tag:
-        return f"{tag} {c.name}"
-    return c.name
+        return f"{tag} {display}"
+    return display
+
 
 
 _STATUS_IMMUNE = {

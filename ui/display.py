@@ -110,8 +110,15 @@ def creature_card(c, prefix="", show_exp=False):
     held_str = ""
     if getattr(c, 'held_item', None):
         held_str = f"  {C.YELLOW}[{c.held_item}]{C.RESET}"
+    # Build name string: show nickname (if any) with species in parens
+    nickname = getattr(c, 'nickname', None)
+    if nickname:
+        name_str = f"{C.BOLD}{nickname}{C.RESET} {C.GRAY}({c.name}){C.RESET}"
+    else:
+        name_str = f"{C.BOLD}{c.name}{C.RESET}"
 
-    print(f"{prefix}{C.BOLD}{c.name}{C.RESET} Lv.{c.level}  {types_str}{status_str}{held_str}")
+    print(f"{prefix}{name_str} Lv.{c.level}  {types_str}{status_str}{held_str}")
+
     # Show ability and nature inline
     ability_str = f"Ability: {c.ability}" if getattr(c, 'ability', None) else ""
     nature_str  = ""

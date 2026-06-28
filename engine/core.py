@@ -87,6 +87,7 @@ class Creature:
         self.held_item = None
         self._held_item_used = False   # one-use berry flag
         self._sturdy_used    = False   # Sturdy one-per-battle flag
+        self.nickname  = None          # optional player-given nickname (≤10 chars)
 
         # Moves: use learned set up to current level
         if moves:
@@ -96,6 +97,7 @@ class Creature:
             self.moves = []
             for lv, mvs in sorted(learned.items()):
                 if lv <= level:
+
                     for m in mvs:
                         if m not in self.moves:
                             self.moves.append(m)
@@ -261,7 +263,9 @@ class Creature:
             "pp":          self.pp,
             "held_item":   self.held_item,
             "nature":      self.nature,
+            "nickname":    self.nickname,
         }
+
 
     @classmethod
     def from_dict(cls, d):
@@ -282,6 +286,7 @@ class Creature:
         c.sp_def  = c._calc_stat(bs[4], "sp_def")
         c.spd     = c._calc_stat(bs[5], "spd")
         c._held_item_used = False   # always reset on load; re-triggers fresh each battle
+        c.nickname    = d.get("nickname")       # None if old save (no nickname)
         return c
 
 
