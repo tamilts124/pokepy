@@ -101,7 +101,54 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     70+), and a direct test of the town-menu option-building logic (confirms the option appears
     once champion, and correctly defers to a still-pending story encounter when one exists).
 
-- [ ] **Battle log / replay** — status: todo
-  - Let the player view a short scrollback of the last few battle messages (or a post-battle
-    turn-by-turn replay) — currently messages scroll past quickly with `slow_print` and there's no
-    way to review what just happened beyond the existing end-of-battle summary.
+- [x] **Battle log / replay** — status: done (commit 0457750)
+  - Added `BATTLE_LOG` rolling deque (maxlen=300) in `ui/display.py`. `slow_print()` appends every
+    line it prints. `reset_battle_log()` clears it at battle start. `show_battle_log(n=15)` renders
+    the last 15 lines in a pageable view.
+  - Added a `📜  Log` option to the in-battle action menu (index 4); `🏃  Run` shifts to index 5.
+    Selecting Log shows the scrollback and returns to the battle menu (no turn consumed).
+  - Verified via `py_compile` on all touched files.
+
+---
+
+## New tasks — todo
+
+- [ ] **Trainer Card gender / avatar** — status: todo
+  - The trainer card currently shows only name/money/playtime/badges/rival score. Add a simple
+    gender/avatar choice at character creation (♂ / ♀ / ⚧) that shows on the trainer card as a
+    flavor line. Low code cost, adds character.
+
+- [ ] **Consumable item descriptions in battle Bag** — status: todo
+  - The Bag menu in battle already shows item counts and their descriptions, but some descriptions
+    are truncated/terse. Give each item a clear one-line description of exactly what it does
+    (e.g. "Heals 50 HP" vs just "heal"). Useful for new players.
+
+- [ ] **Move description tooltip in fight menu** — status: todo
+  - After the player selects ⚔ Fight, the move list shows PP and power but not what the move
+    actually does (e.g. "Lowers foe Defense 1 stage" or "Hits 2–5 times"). Show the move's
+    `desc` field from MOVES data next to the move name (or on a sub-line). Helps players make
+    informed decisions without needing a wiki.
+
+- [ ] **Wild area creature level scaling by badge count** — status: todo
+  - Wild creatures currently have fixed level ranges per area. Scale them up slightly based on
+    how many badges the player has (e.g. +5 per badge tier) so wild areas stay relevant late-game
+    and grinding is still useful after gym 4+.
+
+- [ ] **Held item display on enemy creature card** — status: todo
+  - If the enemy has a held item (trainer battles), show it on the enemy creature card in battle
+    (e.g. "Holding: Leftovers"). Currently the player can never see what the enemy holds, which
+    makes it hard to understand some battle outcomes (e.g. why the enemy keeps healing).
+
+- [ ] **Town revisit flavor text** — status: todo
+  - When the player enters a town they've already visited (or beaten the gym in), show a short
+    one-line flavor quote reflecting the town's current story state ("The gym is quiet now that
+    you beat Fern." / "Stonepeak feels different after your victory."). Small world-building touch.
+
+- [ ] **Sound / terminal bell on key events** — status: todo
+  - Emit `\a` (terminal bell) or use `print('\a')` on: catching a creature, leveling up, winning
+    a gym badge, and evolution. Trivially cheap, adds tactile feedback without a sound library.
+
+- [ ] **Move learning choice remembers "keep old"** — status: todo
+  - When a creature tries to learn a 5th move and the player chooses not to replace any, the game
+    already handles it — but verify the UX is clear (confirm the "don't learn" option is explicit
+    and not just "press back"). Improve wording if needed.
