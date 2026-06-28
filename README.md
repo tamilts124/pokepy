@@ -30,6 +30,12 @@ A fully-featured Pokémon-inspired RPG built in Python. No GUI, no dependencies 
 - Berries (Lum, Sitrus, Oran, Salac, Petaya, Apicot, Ganlon) — one-use, auto-trigger on condition
 - Combat items: Life Orb (+30% damage, recoil), Choice Band (+50% Atk, move-lock), Leftovers (EOT heal), Shell Bell (drain on hit), Scope Lens (double crit chance)
 
+**Evolution stones**
+- Fire Stone, Water Stone, Leaf Stone, and Thunder Stone let you evolve a compatible starter
+  (Flambit, Aquapup, Leafling, Sparkit) instantly from the Creatures menu, without waiting for
+  its level requirement
+- Sold in every shop once you have 2+ badges
+
 **Abilities**
 - Blaze / Overgrow / Torrent — starter abilities that trigger at low HP
 - Intimidate — lowers foe Attack on entry

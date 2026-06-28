@@ -96,6 +96,7 @@ CREATURES = {
         "moves_learned": {1: ["Scratch", "Growl"], 7: ["Ember"], 13: ["Bite"],
                           18: ["Slash"], 24: ["Flamethrower"]},
         "evolution": {16: "Flamclaw"},
+        "stone_evolution": {"Fire Stone": "Flamclaw"},
         "catch_rate": 45, "ability": "Blaze",
         "desc": "A tiny lizard with a burning tail.",
         "held_item_pool": [("Oran Berry", 0.15), ("Sitrus Berry", 0.05)],
@@ -123,6 +124,7 @@ CREATURES = {
         "moves_learned": {1: ["Tackle", "Growl"], 7: ["Vine Whip"], 13: ["Poison Sting"],
                           19: ["Headbutt"], 25: ["Solar Beam"]},
         "evolution": {16: "Thornbush"},
+        "stone_evolution": {"Leaf Stone": "Thornbush"},
         "catch_rate": 45, "ability": "Overgrow",
         "desc": "A small plant creature full of curiosity.",
         "held_item_pool": [("Oran Berry", 0.20), ("Petaya Berry", 0.08)],
@@ -150,6 +152,7 @@ CREATURES = {
         "moves_learned": {1: ["Tackle", "Growl"], 7: ["Water Gun"], 13: ["Bite"],
                           18: ["Bubble Beam"], 25: ["Surf"]},
         "evolution": {16: "Tidalfin"},
+        "stone_evolution": {"Water Stone": "Tidalfin"},
         "catch_rate": 45, "ability": "Torrent",
         "desc": "A happy water pup that loves to splash.",
         "held_item_pool": [("Oran Berry", 0.20)],
@@ -212,6 +215,7 @@ CREATURES = {
         "moves_learned": {1: ["Quick Attack", "Thunder Shock"], 10: ["Spark"],
                           18: ["Thunderbolt"]},
         "evolution": {20: "Voltfang"},
+        "stone_evolution": {"Thunder Stone": "Voltfang"},
         "catch_rate": 190, "ability": "Static",
         "desc": "Sparks fly when it gets excited.",
         "held_item_pool": [("Oran Berry", 0.15)],
@@ -497,6 +501,12 @@ ITEMS = {
     "Petaya Berry": {"type": "held",    "price": 800,  "desc": "Held: +1 Atk when HP below 25% (Spring)"},
     "Apicot Berry": {"type": "held",    "price": 800,  "desc": "Held: +1 Def when HP below 25% (Autumn)"},
     "Ganlon Berry": {"type": "held",    "price": 800,  "desc": "Held: +1 Def when HP below 25% (Winter)"},
+    # Evolution stones — used from the Creatures menu to evolve a compatible
+    # creature instantly, without waiting for its level requirement.
+    "Fire Stone":    {"type": "stone", "price": 3000, "desc": "Evolves certain Fire-type creatures"},
+    "Water Stone":   {"type": "stone", "price": 3000, "desc": "Evolves certain Water-type creatures"},
+    "Leaf Stone":    {"type": "stone", "price": 3000, "desc": "Evolves certain Grass-type creatures"},
+    "Thunder Stone": {"type": "stone", "price": 3000, "desc": "Evolves certain Electric-type creatures"},
 }
 
 TOWNS = {

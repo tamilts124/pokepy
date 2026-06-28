@@ -149,11 +149,32 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     status condition) before the payment confirmation. Tells the player exactly what they gain,
     and if the team is already full shows a special message with an optional "pay anyway" prompt.
 
-- [ ] **Evolution Stone items** — status: todo
-  - Add Fire Stone, Water Stone, Leaf Stone, Thunder Stone to the ITEMS dict. Some creatures
-    (e.g. Flambit → Flamclaw, Aquapup → Tidalfin) gain an alternate evolution path triggered by
-    using the stone from the Bag. Define which creatures accept which stone in CREATURES data.
-    Implement stone-use in `open_bag()` → calls `creature.evolve()`.
+- [x] **Evolution Stone items** — status: done
+  - Added Fire Stone, Water Stone, Leaf Stone, Thunder Stone to `ITEMS` (type `"stone"`).
+  - `stone_evolution` dict added to the 4 affected first-stage creatures: Flambit (Fire Stone
+    → Flamclaw), Aquapup (Water Stone → Tidalfin), Leafling (Leaf Stone → Thornbush), Sparkit
+    (Thunder Stone → Voltfang) — same target species as the normal level evolution, just usable
+    early. All other creatures unaffected (`.get("stone_evolution", {})` defaults to empty).
+  - Stone-use wired into `open_creatures()` → "Use item": shows a confirm prompt, calls
+    `creature.evolve()` on yes, consumes the stone only if confirmed, fires the
+    `first_evolution` achievement and terminal bell, matching the existing level-up evolution UX.
+  - Stones added to both `NON_HOLDABLE` sets (can't be wasted as a held item) and to
+    `BADGE_BONUS_STOCK` (purchasable in any shop from 2 badges onward) so the feature is
+    actually reachable in a normal playthrough, not dead code.
+  - Evolution hints shown in both the Creatures-menu detail card and the Pokédex entry view.
+  - Verified: `py_compile` clean on all files; a scripted-stdin test drove the real
+    `open_creatures()` UI end-to-end (pick creature → Use item → pick Fire Stone → confirm)
+    and confirmed Flambit→Flamclaw, new move learned, stone consumed, achievement fired; a
+    second run confirmed declining the prompt leaves the creature and stone untouched.
+    Old-save compatibility confirmed via the existing `inventory` merge-by-key load path
+    (missing stone keys default to 0).
+
+- [ ] **Evolution Stones for remaining elemental lines** — status: todo
+  - Currently only Flambit/Aquapup/Leafling/Sparkit have a stone shortcut. Consider adding
+    stones (or a 5th type, e.g. Moon Stone / Dusk Stone) for Ghostlet, Iceling, Drakling,
+    Steelbit, Mudpup, Skywing, Venomfang, Psychling, Mushrump, Shellcrab, Ashpup — or leave
+    those level-only by design so stones stay a starter-line perk. Needs a design decision
+    before implementation, not just mechanical copy-paste.
 
 - [x] **Creature sorting in team view** — status: done
   - Added "🔃 Sort team" option to the Creatures menu alongside the existing "🔀 Reorder team".

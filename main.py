@@ -257,6 +257,10 @@ class Game:
                 slow_print(f"  {C.CYAN}Evolves:{C.RESET} → {evo_name} at Lv.{evo_lv}")
             else:
                 slow_print(f"  {C.CYAN}Evolves:{C.RESET} (final form)")
+            stone_evo = data.get("stone_evolution")
+            if stone_evo:
+                for stone, evo_name in stone_evo.items():
+                    slow_print(f"  {C.CYAN}Or:{C.RESET} use a {stone} → {evo_name}")
         else:
             slow_print(f"  {C.GRAY}Catch one to reveal base stats, ability, and evolution data.{C.RESET}")
 
@@ -621,7 +625,8 @@ class Game:
                         "Antidote", "Burn Heal", "Awakening", "Ice Heal",
                         "Cheer Up", "Full Heal",
                         "Elixir", "Max Elixir",
-                        "X Attack", "X Defense"}
+                        "X Attack", "X Defense",
+                        "Fire Stone", "Water Stone", "Leaf Stone", "Thunder Stone"}
         clear()
         section("📦  HELD ITEMS")
         slow_print(f"  {C.GRAY}Give any compatible item to a creature to hold in battle.{C.RESET}\n")
@@ -687,6 +692,7 @@ class Game:
             "Cheer Up", "Full Heal",
             "Elixir", "Max Elixir",
             "X Attack", "X Defense", "X Sp.Atk", "X Sp.Def", "X Speed",
+            "Fire Stone", "Water Stone", "Leaf Stone", "Thunder Stone",
         }
 
         while True:
@@ -803,6 +809,9 @@ class Game:
                         print(f"\n  {C.CYAN}→ Evolves into {nxt} at Lv.{lv}{C.RESET}")
                 else:
                     print(f"\n  {C.MAGENTA}✦ Final form{C.RESET}")
+                stone_evo = CREATURES[c.name].get("stone_evolution", {})
+                for stone, nxt in stone_evo.items():
+                    print(f"  {C.CYAN}→ Or use a {stone} to evolve into {nxt} now{C.RESET}")
 
                 # Status
                 if c.status:
@@ -892,14 +901,17 @@ class Game:
 
                 # ── Use item ──
                 elif ac == 2:
-                    # Build usable list: heal/cure/revive/pp + Rare Candy
+                    # Build usable list: heal/cure/revive/pp + Rare Candy + Evolution Stones
                     usable = {}
+                    stone_evo = CREATURES[c.name].get("stone_evolution", {})
                     for k, v in self.inventory.items():
                         if v <= 0: continue
                         itype = ITEMS.get(k, {}).get("type", "")
                         if itype in ("heal", "cure", "revive", "pp"):
                             usable[k] = v
                         if k == "Rare Candy":
+                            usable[k] = v
+                        if itype == "stone" and k in stone_evo:
                             usable[k] = v
                     if not usable:
                         slow_print(f"  {C.YELLOW}No usable items in bag.{C.RESET}")
@@ -923,6 +935,22 @@ class Game:
                             events = c.gain_exp(c.exp_to_next - c.exp)  # force level-up
                             self._handle_exp_events(c, events)
                             slow_print(f"  {C.GREEN}{c.name} grew to Lv.{c.level}!{C.RESET}")
+                        press_enter()
+
+                    elif itype == "stone":
+                        target = stone_evo.get(item_name)
+                        slow_print(f"\n  {C.MAGENTA}❆❆  {c.name} is bathed in the {item_name}'s power…  ❆❆{C.RESET}")
+                        time.sleep(0.8)
+                        if confirm(f"  Evolve {c.name} into {target}?"):
+                            old = c.name
+                            self.inventory[item_name] -= 1
+                            c.evolve(target)
+                            slow_print(f"  {C.MAGENTA}❆  {old} evolved into "
+                                       f"{C.BOLD}{target}{C.RESET}{C.MAGENTA}!  ❆{C.RESET}")
+                            print('\a', end='', flush=True)
+                            self._check_achievement("first_evolution")
+                        else:
+                            slow_print(f"  {C.GRAY}{c.name} did not evolve. The {item_name} was not used.{C.RESET}")
                         press_enter()
 
                     elif itype == "heal":
@@ -1081,6 +1109,10 @@ class Game:
             (2, "Great Ball"),
             (2, "Antidote"),
             (2, "Awakening"),
+            (2, "Fire Stone"),
+            (2, "Water Stone"),
+            (2, "Leaf Stone"),
+            (2, "Thunder Stone"),
             (3, "Hyper Potion"),
             (3, "Revive"),
             (3, "Elixir"),
