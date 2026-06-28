@@ -1423,6 +1423,9 @@ class Game:
             )
             if alive_hp:
                 print(f"  {alive_hp}")
+            if self.repel_steps > 0:
+                print(f"  {C.CYAN}🛡  Repel active: {self.repel_steps} "
+                      f"encounter{'s' if self.repel_steps != 1 else ''} left{C.RESET}")
             opts = ["Walk further", "🏕  Rest (heal 20% HP)", "← Return to town"]
             if self.inventory.get("Escape Rope", 0) > 0:
                 opts.insert(2, "🪢  Use Escape Rope (leave instantly)")
@@ -1761,6 +1764,7 @@ class Game:
         player_c = self._pick_lead()
         if player_c is None: return
 
+        badge_bonus = (len(self.badges) // 2) * 5
         fish_count = 0
         while True:
             # Bobber animation
@@ -1774,7 +1778,7 @@ class Game:
             else:
                 # A bite!
                 name, lo, hi = random.choice(fish_pool)
-                lv = random.randint(lo, hi)
+                lv = random.randint(lo + badge_bonus, hi + badge_bonus)
                 wild = Creature(name, lv, is_player=False)
                 slow_print(f"  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
                            f"{C.YELLOW} took the hook! (Lv.{wild.level}){C.RESET}")
@@ -1863,6 +1867,7 @@ class Game:
         creature_pool = grotto["creatures"]
         max_encounters = random.randint(2, 4)
         encounters_done = 0
+        badge_bonus = (len(self.badges) // 2) * 5
 
         while encounters_done < max_encounters:
             clear()
@@ -1881,7 +1886,7 @@ class Game:
 
             # Encounter
             name, lo, hi = random.choice(creature_pool)
-            lv = random.randint(lo, hi)
+            lv = random.randint(lo + badge_bonus, hi + badge_bonus)
             wild = Creature(name, lv, is_player=False)
             slow_print(f"\n  {C.YELLOW}A wild {C.BOLD}{wild.name}{C.RESET}"
                        f"{C.YELLOW} leaps from the shadows! (Lv.{wild.level}){C.RESET}")

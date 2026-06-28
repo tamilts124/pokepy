@@ -169,12 +169,22 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     Old-save compatibility confirmed via the existing `inventory` merge-by-key load path
     (missing stone keys default to 0).
 
-- [ ] **Evolution Stones for remaining elemental lines** — status: todo
-  - Currently only Flambit/Aquapup/Leafling/Sparkit have a stone shortcut. Consider adding
-    stones (or a 5th type, e.g. Moon Stone / Dusk Stone) for Ghostlet, Iceling, Drakling,
-    Steelbit, Mudpup, Skywing, Venomfang, Psychling, Mushrump, Shellcrab, Ashpup — or leave
-    those level-only by design so stones stay a starter-line perk. Needs a design decision
-    before implementation, not just mechanical copy-paste.
+- [x] **Evolution Stones for remaining elemental lines** — status: done (design decision: no new stones)
+  - Investigated all 11 candidate lines (Ghostlet, Iceling, Drakling, Steelbit, Mudpup, Skywing,
+    Venomfang, Psychling, Mushrump, Shellcrab, Ashpup) in `data/creatures.py`. None of them are
+    pure Fire/Water/Grass/Electric — their types are Dragon, Steel, Ground/Water, Flying/Normal,
+    Poison, Psychic, Grass/Poison, Water/Rock, Ghost, Ice. Reusing one of the 4 existing stones
+    on any of them would be thematically wrong (e.g. a "Fire Stone" evolving the Dragon line
+    makes no sense), so this isn't a copy-paste job — it would require 8-9 brand new stone
+    items (Dragon/Steel/Ground/Flying/Poison/Psychic/Ghost/Ice/Rock Stone), each needing its own
+    shop slot, `NON_HOLDABLE` entry, and Pokédex hint.
+  - Decision: leave all 11 level-only. The 4 existing stones intentionally cover only the 3
+    elemental starters (Flambit/Aquapup/Leafling) plus Sparkit, as an early-route "skip the
+    wait" perk on lines the player meets first — not a universal mechanic. Doubling the item
+    list with a stone per remaining type would dilute that rarity and bloat every shop's stock
+    for marginal benefit, since all 11 lines already evolve at a reasonable level (20-28) with
+    no level-gating complaints raised in testing. Revisit only if a future playthrough surfaces
+    a specific line that feels like it evolves too late.
 
 - [x] **Creature sorting in team view** — status: done
   - Added "🔃 Sort team" option to the Creatures menu alongside the existing "🔀 Reorder team".
@@ -212,7 +222,32 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     by the previous session), and does not apply to fishing or grottos (separate, deliberate
     activities, not passive wandering).
 
-- [ ] **Repel: visible charge counter while exploring** — status: todo
-  - `explore()`'s status line currently shows team HP bars but not whether a Repel is active.
-    Add a small indicator (e.g. "🛡 Repel: 4 left") next to the HP bars when
-    `self.repel_steps > 0`, so the player doesn't have to remember if one is running.
+- [x] **Repel: visible charge counter while exploring** — status: done
+  - Added a `🛡 Repel active: N encounters left` line to the `explore()` status header,
+    shown right under the team HP bars whenever `self.repel_steps > 0`.
+  - Verified via a scripted harness (captured stdout from a real `explore()` call with
+    `repel_steps=2`) that the indicator text renders on the very first screen.
+
+- [x] **Fishing & grotto encounters missing badge-count level scaling** — status: done
+  - Found while reviewing `explore()`'s badge-scaling pattern: `go_fishing()` and
+    `explore_grotto()` both rolled wild levels straight from each town's base `(lo, hi)` range
+    with no `badge_bonus`, unlike regular wild/trainer encounters which already get
+    `+5 per 2 badges`. Net effect: fish and grotto creatures became trivially weak (and
+    increasingly useless to catch/fight) in the back half of the game while regular wild
+    encounters kept pace.
+  - Fix: added the same `badge_bonus = (len(self.badges) // 2) * 5` calc to both functions and
+    applied it to the `random.randint(lo, hi)` rolls in each.
+  - Verified with a scripted harness (6 badges → expected +15): forced a fishing bite and a
+    grotto encounter, monkeypatched `run_battle` to capture the wild creature's level before
+    battle, and confirmed both came back within the badge-boosted range (e.g. Stonepeak's
+    12-20 Old Rod pool produced Lv.31, i.e. base+15).
+
+## New tasks — todo
+
+- [ ] **Random trainer rematches while exploring** — status: todo
+  - `explore()`'s random trainer encounters (the 18% roll) currently have no rematch/cooldown
+    tracking at all — every walk can re-roll the same trainer archetype indefinitely, which is
+    fine for grinding but means there's no sense of "named" trainers to remember, unlike gym
+    leaders/rivals. Consider giving a handful of random trainers per area a fixed name + seed
+    so repeat encounters feel like rematches rather than anonymous reskins, or leave as-is if
+    that's judged not worth the complexity for a feature whose whole point is throwaway grinding.
