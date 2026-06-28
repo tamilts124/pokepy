@@ -7,62 +7,45 @@ todo / in-progress / done / tested / blocked
 Fresh repo, single "initial commit". All files compile and import cleanly.
 Game is structurally complete (battle, gyms, Elite Four, rival, held items, abilities, save/load).
 
-### Bugs found during audit
+### Bugs found during audit — all resolved
 
-- [x] **Save omits achievements + season** — status: done
-  - Fixed in commit e75f454: both `achievements` and `season` now saved/restored.
-
-- [x] **`battle100` achievement fires on every level-up, not at 100 battles** — status: done
-  - Fixed in commit e75f454: now correctly checks battle count.
-
-- [x] **Achievements `first_catch`, `first_fish`, `grotto_found`, `rival_winner`, `rich`, `team_full` are never triggered** — status: done
-  - Fixed in commit c9ed4ea: all achievement triggers wired at correct game moments.
-
-- [x] **Fishing has no UI** — status: done
-  - `go_fishing()` method written (prev session) and wired into town_loop menu (this session).
-  - 🎣 Go Fishing appears in every town that has fish pools.
-
-- [x] **Grottos have no UI** — status: done
-  - `explore_grotto()` method written (prev session) and wired into town_loop menu (this session).
-  - 🕳 Hidden Grotto appears in 8 towns that have grotto data.
-
-- [x] **Seasonal wilds/berries unused in explore()** — status: done
-  - Fixed in commit 05c50c1: seasonal creatures spawn at 30% in season areas; seasonal berry added to hidden loot pool.
-
-- [x] **Achievements not saved/loaded** — status: done
-  - Fixed together with save fix (commit e75f454).
+- [x] **Save omits achievements + season** — status: done (commit e75f454)
+- [x] **`battle100` achievement fires on wrong condition** — status: done (commit e75f454)
+- [x] **Achievement triggers missing** — status: done (commit c9ed4ea)
+- [x] **Fishing has no UI** — status: done (commit a6dcf09)
+- [x] **Grottos have no UI** — status: done (commit a6dcf09)
+- [x] **Seasonal wilds/berries unused** — status: done (commit 05c50c1)
+- [x] **Achievements not saved/loaded** — status: done (commit e75f454)
 
 ---
 
 ## Tasks — planned features / improvements
 
-- [ ] **Move PP display in battle** — status: todo
-  - When choosing a move, show current PP/max PP so player knows what's running low.
-  - notes: low-effort, high-value UX improvement.
+- [x] **Move PP display in battle** — status: done
+  - Already implemented at battle.py line 1032: shows `PP cur/max` next to each move in the fight menu.
 
-- [ ] **Enemy HP bar shows number** — status: todo
-  - Show foe HP as `??? / ???` or `~60%` so player has information to strategize.
-  - notes: currently foe HP bar only shows a visual bar with no numbers.
+- [x] **Enemy HP bar shows number** — status: done
+  - `hp_bar()` in display.py returns `hp/max_hp` numerically; both sides use creature_card → hp_bar.
 
-- [ ] **Nature system** — status: todo
-  - Each creature gets a random nature (Adamant, Timid, Bold, etc.) that gives +10%/-10% to two stats.
-  - Add at creature creation, display on creature card and battle stat screen.
-  - notes: adds meaningful team-building depth.
-
-- [ ] **Pokédex / creature registry** — status: todo
-  - Track which creatures have been seen (encountered) and caught.
-  - Show in a 📖 Pokédex menu option from town.
-  - notes: core Pokémon QoL; motivates exploration/catching.
-
-- [ ] **In-battle X-item use** — status: todo
-  - Allow X Attack, X Defense, X Speed (new shop items) to be used from Bag during battle.
-  - Currently boost items show "Use this during a battle" but are not implemented in-battle.
-  - notes: add items to shop data, add in-battle handler in battle.py.
-
-- [ ] **Post-game content** — status: todo
-  - After Champion: Elite Four rematch (scaled to lv 70+), Champion title on Trainer Card.
-  - notes: gives end-game players something to do.
+- [x] **Nature system** — status: done (commit 034b431)
+  - 25 natures each give +10% to one stat and -10% to another (5 neutral).
+  - Applied in `_calc_stat`, persisted via `to_dict`/`from_dict`, shown in creature card, detail screen (▲/▼ markers on stat table), and in-battle 📊 Stats view.
 
 - [ ] **Critical hit flash** — status: todo
-  - Make "CRITICAL HIT!" stand out more visually (bold, bright red, extra newlines).
-  - notes: tiny polish but feels much better in play.
+  - Make "Critical hit!" stand out more: bold + bright colour + own line.
+  - notes: currently inline in gray — easy miss mid-battle.
+
+- [ ] **Pokédex / creature registry** — status: in-progress
+  - Track seen + caught creatures; show in a 📖 Pokédex menu from town.
+  - notes: needs `seen` and `caught` sets on Game, population on encounter/catch, and a display menu.
+
+- [ ] **In-battle X-item use** — status: todo
+  - X Attack / X Defense / X Speed usable from Bag during battle (not just "use this in battle" message).
+  - notes: items already in ITEMS dict as "boost" type; need in-battle branch in battle.py bag handler.
+
+- [ ] **Post-game content** — status: todo
+  - After Champion: Elite Four rematch at lv 70+, Champion title on Trainer Card.
+
+- [ ] **Pokédex completion reward** — status: todo
+  - Unlock a Master Ball or other prize when player catches all creatures.
+  - notes: natural companion to Pokédex feature above.

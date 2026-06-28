@@ -12,8 +12,6 @@ from ui.display  import (C, slow_print, banner, hp_bar, creature_card,
 
 def effectiveness_msg(eff, crit=False):
     parts = []
-    if crit:
-        parts.append(f"{C.YELLOW}Critical hit!{C.RESET}")
     if eff >= 2:
         parts.append(f"{C.YELLOW}It's super effective!{C.RESET}")
     elif eff == 0:
@@ -21,6 +19,11 @@ def effectiveness_msg(eff, crit=False):
     elif eff < 1:
         parts.append(f"{C.BLUE}It's not very effective...{C.RESET}")
     return "  ".join(parts)
+
+
+def crit_flash():
+    """Print a vivid critical hit banner on its own line."""
+    slow_print(f"  {C.BOLD}{C.RED}★  CRITICAL HIT!  ★{C.RESET}", 0)
 
 
 def type_hint(move_type, defender_types):
@@ -705,7 +708,8 @@ def enemy_move(enemy, player, weather=None):
     dmg, eff, crit = calc_damage(enemy, player, move_name, weather)
     dmg = int(dmg * held_item_damage_mult(enemy))
     player.take_damage(dmg)
-    slow_print(f"  {_dname(enemy)} dealt {C.RED}{dmg}{C.RESET} damage!  {effectiveness_msg(eff, crit)}")
+    if crit: crit_flash()
+    slow_print(f"  {_dname(enemy)} dealt {C.RED}{dmg}{C.RESET} damage!  {effectiveness_msg(eff)}")
 
     # ── Post-hit held item effects (enemy attacker) ──────────────
     msg = apply_life_orb_recoil(enemy)
@@ -829,7 +833,8 @@ def player_attack(player, enemy, move_name, boosts, weather=None):
     atk_boost = boosts.get("spatk", 1.0) if move_category == "special" else boosts.get("atk", 1.0)
     dmg = int(dmg * atk_boost * held_item_damage_mult(player))
     enemy.take_damage(dmg)
-    slow_print(f"  {_dname(player)} dealt {C.GREEN}{dmg}{C.RESET} damage!  {effectiveness_msg(eff, crit)}")
+    if crit: crit_flash()
+    slow_print(f"  {_dname(player)} dealt {C.GREEN}{dmg}{C.RESET} damage!  {effectiveness_msg(eff)}")
 
     # ── Post-hit held item effects ───────────────────────────────
     msg = apply_life_orb_recoil(player)
