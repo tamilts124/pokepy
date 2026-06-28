@@ -1143,6 +1143,14 @@ class Game:
         _ps = getattr(self, 'play_seconds', 0)
         _ph, _pm = _ps // 3600, (_ps % 3600) // 60
         slow_print(f"  Playtime: {_ph}h {_pm:02d}m")
+        # Pokédex progress
+        _total = len(CREATURES)
+        _seen  = len(getattr(self, 'seen',  set()))
+        _caught = len(getattr(self, 'caught', set()))
+        _pct   = int((_caught / _total) * 100) if _total else 0
+        _dex_color = C.YELLOW if _caught >= _total else C.RESET
+        slow_print(f"  Pokédex : {_dex_color}{_caught}{C.RESET} caught  /  {_seen} seen  "
+                   f"{C.GRAY}({_pct}% of {_total}){C.RESET}")
         slow_print(f"  Town    : {self.town}")
         slow_print(f"  Time    : {tod_color}{tod_icon} {tod}{C.RESET}")
         # Rival score
@@ -1154,6 +1162,7 @@ class Game:
         print()
         team_summary(self.team)
         press_enter()
+
 
     # ── SHOP (buy + sell combined) ──────────────────────────
     def visit_shop(self, stock, badge_count=0):
@@ -1368,7 +1377,7 @@ class Game:
         press_enter()
 
     # ── PICK LEAD ──────────────────────────────
-    def _pick_lead(self, current=None):
+    def _pick_lead(self, current=None, fainted_name=None):
         alive = [c for c in self.team if c.is_alive()]
         if not alive:
             slow_print(f"  {C.RED}All your creatures fainted! Visit an Inn to heal.{C.RESET}")
@@ -1377,11 +1386,21 @@ class Game:
         if current is not None and current.is_alive():
             return current
         if len(alive) == 1:
+            # Only one choice — auto-select but show the faint notice
+            if fainted_name:
+                slow_print(f"  {C.RED}{fainted_name} fainted!{C.RESET}")
+                slow_print(f"  {C.CYAN}Sending out {alive[0].name}...{C.RESET}")
+                press_enter()
             return alive[0]
+        # Multiple alive — show the faint header if we know who just fainted
+        if fainted_name:
+            slow_print(f"\n  {C.RED}✗  {fainted_name} fainted!  Choose your next creature:{C.RESET}")
         opts = [f"{c.name} Lv.{c.level}  {hp_bar(c.hp, c.max_hp, 12)}"
                 for c in alive]
-        idx = menu("Lead with which creature?", opts)
+        idx = menu("Send out which creature?", opts)
         return alive[idx]
+
+
 
     # ── GYM ────────────────────────────────────
     def challenge_gym(self, gym_data):
@@ -1411,7 +1430,10 @@ class Game:
                 prize_money += lv * 60
                 alive = [c for c in self.team if c.is_alive()]
                 if alive and not player_c.is_alive():
-                    player_c = alive[0]
+                    player_c = self._pick_lead(
+                        fainted_name=getattr(player_c, 'nickname', None) or player_c.name)
+                    if player_c is None: return
+
             elif result == "lose":
                 slow_print(f"\n  {C.RED}You were defeated! Visit an Inn to recover.{C.RESET}")
                 press_enter(); return
@@ -1559,11 +1581,14 @@ class Game:
                         prize_money += (lv + badge_bonus) * 40
                         alive_after = [c for c in self.team if c.is_alive()]
                         if alive_after and not player_c.is_alive():
-                            player_c = alive_after[0]
+                            player_c = self._pick_lead(
+                                fainted_name=getattr(player_c, 'nickname', None) or player_c.name)
+                            if player_c is None: break
                         clear()
                     elif result == "lose":
                         lost = True
                         break
+
                 if lost:
                     slow_print(f"  {C.RED}You lost! Retreating...{C.RESET}")
                     press_enter()
@@ -1640,7 +1665,9 @@ class Game:
                             self.earn_money(max(wild.level * 15, 100))
                             alive_after = [c for c in self.team if c.is_alive()]
                             if alive_after and not player_c.is_alive():
-                                player_c = alive_after[0]
+                                player_c = self._pick_lead(
+                                    fainted_name=getattr(player_c, 'nickname', None) or player_c.name)
+                                if player_c is None: break
                             clear()
                         elif result == "caught":
                             self._count_battle()
@@ -1741,7 +1768,10 @@ class Game:
                     self.award_exp(player_c, enemy)
                     alive = [c for c in self.team if c.is_alive()]
                     if alive and not player_c.is_alive():
-                        player_c = alive[0]
+                        player_c = self._pick_lead(
+                            fainted_name=getattr(player_c, 'nickname', None) or player_c.name)
+                        if player_c is None: break
+
                 elif result == "lose":
                     slow_print(f"\n  {C.RED}Defeated by {challenger['name']}...{C.RESET}")
 
@@ -1851,7 +1881,10 @@ class Game:
                     self.earn_money(max(wild.level * 15, 100))
                     alive_after = [c for c in self.team if c.is_alive()]
                     if alive_after and not player_c.is_alive():
-                        player_c = alive_after[0]
+                        player_c = self._pick_lead(
+                            fainted_name=getattr(player_c, 'nickname', None) or player_c.name)
+                        if player_c is None: break
+
                     fish_count += 1
                 elif result == "caught":
                     self._count_battle()
@@ -1961,7 +1994,10 @@ class Game:
                 self.earn_money(max(wild.level * 15, 100))
                 alive_after = [c for c in self.team if c.is_alive()]
                 if alive_after and not player_c.is_alive():
-                    player_c = alive_after[0]
+                    player_c = self._pick_lead(
+                        fainted_name=getattr(player_c, 'nickname', None) or player_c.name)
+                    if player_c is None: break
+
             elif result == "caught":
                 self._count_battle()
                 captured = obj

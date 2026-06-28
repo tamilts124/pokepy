@@ -305,19 +305,44 @@ Game is structurally complete (battle, gyms, Elite Four, rival, held items, abil
     (2) drought increments correctly through 10 dry rolls, boost kicks in at threshold (1.50×),
         and resets to 0 on the first drop; (3) `item_drought=13` survives a save/load cycle.
 
-## New tasks — todo
+## Session 5 — Resume from mid-task cutoff (2026-06)
 
-- [ ] **Trainer Card: show Pokédex progress** — status: todo
-  - The Trainer Card currently shows money, badges, battles, playtime, and rival score, but
-    not how many creatures the player has seen/caught. Add a line like
-    "Pokédex: X seen / Y caught (Z total)" so players can track completion at a glance without
-    opening the full Pokédex screen.
+- [x] **Trainer Card: show Pokédex progress** — status: done
+  - Found half-finished on session start: working tree had an uncommitted, partially-broken
+    edit to `main.py` that started both this task and the next one simultaneously. The
+    Pokédex-progress hunk itself (`open_stats()` Pokédex line using `CREATURES`/`seen`/`caught`)
+    was complete and correct as left — added the line and verified output via a scripted
+    `open_stats()` call: `Pokédex : 1 caught / 2 seen (2% of 38)` rendered correctly.
 
-- [ ] **Battle: switch prompt when lead faints mid-battle** — status: todo
-  - When the player's lead faints in a trainer/gym/Elite Four battle, the game calls
-    `_pick_lead()` which shows a full team menu. But there's no dramatic prompt or context —
-    it drops straight into a plain list. Add a "Your <name> fainted! Choose next creature:"
-    header with the fallen creature's name for clarity and emotional weight.
+- [x] **Battle: switch prompt when lead faints mid-battle** — status: done
+  - Found genuinely broken: the previous session's edit to `_pick_lead()` (new `fainted_name`
+    param + faint banner) was complete and correct, and 5 of 6 call sites updating
+    `player_c = alive[0]` / `alive_after[0]` to `player_c = self._pick_lead(fainted_name=...)`
+    were also fine (gym, Elite Four, random trainer, fishing, grotto). But the **6th site**
+    — the regular wild-encounter branch inside `explore()` — was mid-edit and syntactically
+    broken: the lines `result, obj = run_battle(...)` and `if result == "win":` had been
+    deleted, leaving the `self.seen.add(wild.name)` block dangling at the wrong indent with no
+    `result`/`obj` defined, plus a duplicated `self._count_battle()` in the `elif result ==
+    "caught":` branch right below it. This was a `NameError`/`IndentationError` waiting to
+    crash the single most common gameplay action (walking and encountering a wild creature) —
+    almost certainly where the previous session's process was cut off.
+  - Fix: restored the missing `result, obj = run_battle(player_c, wild, self.inventory,
+    self.team, wild=True, weather=weather)` call and `if result == "win":` line, removed the
+    duplicate `self._count_battle()`, and re-attached the rest of the block (which was sound)
+    underneath. Confirmed against `git show HEAD:main.py` to make sure the restored lines
+    matched the pre-existing pattern used everywhere else in the file.
+  - Verified: `python -m py_compile main.py` and `ast.parse()` both clean. Confirmed via
+    `findstr` that no other `alive[0]` / `alive_after[0]` call sites remain unconverted (all 6
+    now route through `_pick_lead`). Scripted unit tests against `Game._pick_lead()` directly
+    confirmed: (1) single creature alive + `fainted_name` set → prints faint notice, auto-sends
+    the survivor; (2) multiple alive + `fainted_name` set → prints the "✗ <name> fainted! Choose
+    your next creature:" header, then the normal selection menu, returns the chosen creature.
+    A full scripted playthrough of `explore()`'s wild-encounter branch (mocking `run_battle`,
+    `random`, and `input`) was attempted but proved too brittle to finish reliably in this
+    session given the menu/RNG surface area — the static verification above (restored code
+    matches the known-good pattern byte-for-byte, compiles, and the helper function it calls
+    is independently unit-tested) is considered sufficient; flagging this as a good first
+    candidate for a real interactive playtest pass next session.
 
 - [ ] **Town: NPC dialogue system** — status: todo
   - Towns have no ambient NPCs — visiting any town is purely mechanical (shop/inn/gym).
